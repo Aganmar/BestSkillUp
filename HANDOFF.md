@@ -1,6 +1,6 @@
 # BestSkillUp — hand-off
 
-WoW: Forever add-on that ranks profession recipes by **expected gold per skill point**, using Auctionator prices. Blacksmithing, Mining (smelting), Enchanting, Cooking and First Aid. Version 0.10.2, Interface 16001. Licensed GPL v3 (`LICENSE`, shipped in the release zip).
+WoW: Forever add-on that ranks profession recipes by **expected gold per skill point**, using Auctionator prices. Blacksmithing, Mining (smelting), Enchanting, Cooking and First Aid. Version 0.10.3, Interface 16001. Licensed GPL v3 (`LICENSE`, shipped in the release zip).
 
 - Source (git repo): `C:\Users\User\BestSkillUp`, pushed to the private GitHub repo https://github.com/Aganmar/BestSkillUp
 - Install path (managed by WowUp from the GitHub releases): `C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns\BestSkillUp`
@@ -69,7 +69,7 @@ The inputs are Wowhead (WoW Forever) exports from the profession's skill page (e
 - Adding a file to the TOC needs a **full game restart**, not `/reload`.
 - `|` in chat text is a WoW escape code — help text uses `/` instead.
 - `StaticPopup` data doesn't pass through on Forever; the Shift-click link uses a custom frame.
-- EllesmereUI already skins GameTooltip; the add-on uses its own tooltip frames (`BestSkillUpItemTip`, `BestSkillUpCostTip`) and doesn't re-skin them.
+- EllesmereUI already skins GameTooltip; the add-on uses its own tooltip frames (`BestSkillUpItemTip`, `BestSkillUpCostTip`) and doesn't re-skin them. Other add-ons' tooltip lines (e.g. Auctionator's price) only hook GameTooltip, so the item tooltip adds its own "Auction xN" line from `ns.AHPrice`.
 - Logic was tested outside the game with lua5.1 and stubbed WoW APIs; there is no test harness in this folder.
 
 ## Open items

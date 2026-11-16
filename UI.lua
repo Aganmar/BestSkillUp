@@ -44,7 +44,15 @@ local function showRecipeTooltip(row)
   itemTip:ClearAllPoints()
   itemTip:SetPoint("TOPLEFT", frame, "TOPRIGHT", 2, 0)
   local out = x.r[2]
-  if out and out > 0 then itemTip:SetHyperlink("item:" .. out) else itemTip:AddLine(x.r[1]) end
+  if out and out > 0 then
+    itemTip:SetHyperlink("item:" .. out)
+    -- Auctionator only adds its price to GameTooltip, so add the line ourselves (for what one craft makes).
+    local made = math.max(1, x.r[3] or 1)
+    local ah = ns.AHPrice(out)
+    itemTip:AddDoubleLine("Auction x" .. made, ah and ns.Money(ah * made) or "|cff808080no price|r", 0.4, 0.73, 1, 1, 1, 1)
+  else
+    itemTip:AddLine(x.r[1])
+  end
   itemTip:Show()
 
   costTip:SetOwner(frame, "ANCHOR_NONE")
