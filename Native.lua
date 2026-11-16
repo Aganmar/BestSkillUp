@@ -38,7 +38,7 @@ local function update()
     text = ("Skill-up: |cffffffff%d%%|r   |cffff8040%d|r |cffffff00%d|r |cff40c040%d|r |cff808080%d|r\nCost Per Point (Vendor): %s"):format(
       p * 100, o, y, g, gr, per("vendor"))
     if not ns.IsBoP(r[2]) then text = text .. "\nCost Per Point (AH): " .. per("ahonly") end
-    if ns.UseDisenchant() and ns.DisenchantValue(r[2]) > 0 then text = text .. "\nCost Per Point (Disenchant): " .. per("de") end
+    if ns.DisenchantCounts(r[2]) and ns.DisenchantValue(r[2]) > 0 then text = text .. "\nCost Per Point (Disenchant): " .. per("de") end
   end
   line:SetText(text)
   anchor()

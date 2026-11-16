@@ -6,25 +6,59 @@ local _, ns = ...
 local D = { professions = {}, order = {}, items = {}, vendor = {}, mining = {}, miningSkillLine = 186 }
 ns.Data = D
 
--- Disenchanting results by item level (Classic tables, which WoW: Forever's guides repeat):
---   { minItemLevel, maxItemLevel, dustID, dustMin, dustMax, essenceID, essenceMin, essenceMax, shardID, nexusCrystal }
--- Uncommon armour: 75% dust, 20% essence, 5% shard; uncommon weapons swap dust and essence.
--- Rare: the shard (0.5% Nexus Crystal where listed). Epic: 2-4 shards up to item level 55, a Nexus Crystal above.
--- Sources: https://www.wow-professions.com/forever/disenchanting-guide , https://warcraft.wiki.gg/wiki/Disenchanting_tables
+-- Disenchanting results by ITEM level (Classic), from https://warcraft.wiki.gg/wiki/Disenchanting_tables
+-- Each row: { minItemLevel, maxItemLevel, { chance%, minQty, maxQty, itemID }, ... }
+-- WoW: Forever has no Burning Crusade materials, so the top rows also cover item levels above 65.
+local SD, SOUL, VIS, DREAM, ILL = 10940, 11083, 11137, 11176, 16204           -- dusts
+local LME, GME, LAE, GAE, LMY, GMY = 10938, 10939, 10998, 11082, 11134, 11135 -- essences
+local LNE, GNE, LEE, GEE = 11174, 11175, 16202, 16203
+local SGS, LGS, SGL, LGL, SRS, LRS, SBS, LBS = 10978, 11084, 11138, 11139, 11177, 11178, 14343, 14344 -- shards
+local NEXUS = 20725
 D.disenchant = {
-  {  5, 10, 10940, 1, 2, 10938, 1, 2, nil },     -- Strange Dust, Lesser Magic Essence
-  { 11, 15, 10940, 2, 3, 10939, 1, 2, 10978 },   -- Strange Dust, Greater Magic Essence, Small Glimmering Shard
-  { 16, 20, 10940, 4, 6, 10998, 1, 2, 10978 },   -- Strange Dust, Lesser Astral Essence, Small Glimmering Shard
-  { 21, 25, 11083, 1, 2, 11082, 1, 2, 11084 },   -- Soul Dust, Greater Astral Essence, Large Glimmering Shard
-  { 26, 30, 11083, 2, 5, 11134, 1, 2, 11138 },   -- Soul Dust, Lesser Mystic Essence, Small Glowing Shard
-  { 31, 35, 11137, 1, 2, 11135, 1, 2, 11139 },   -- Vision Dust, Greater Mystic Essence, Large Glowing Shard
-  { 36, 40, 11137, 2, 5, 11174, 1, 2, 11177 },   -- Vision Dust, Lesser Nether Essence, Small Radiant Shard
-  { 41, 45, 11176, 1, 2, 11175, 1, 2, 11178 },   -- Dream Dust, Greater Nether Essence, Large Radiant Shard
-  { 46, 50, 11176, 2, 5, 16202, 1, 2, 14343 },   -- Dream Dust, Lesser Eternal Essence, Small Brilliant Shard
-  { 51, 55, 16204, 1, 2, 16203, 1, 2, 14344, true }, -- Illusion Dust, Greater Eternal Essence, Large Brilliant Shard
-  { 56, 999, 16204, 2, 5, 16203, 1, 3, 14344, true },
+  armor = {   -- uncommon armour
+    {  5, 15, { 80, 1, 2, SD },    { 20, 1, 2, LME } },
+    { 16, 20, { 75, 2, 3, SD },    { 20, 1, 2, GME }, { 5, 1, 1, SGS } },
+    { 21, 25, { 75, 4, 6, SD },    { 15, 1, 2, LAE }, { 10, 1, 1, SGS } },
+    { 26, 30, { 75, 1, 2, SOUL },  { 20, 1, 2, GAE }, { 5, 1, 1, LGS } },
+    { 31, 35, { 75, 2, 5, SOUL },  { 20, 1, 2, LMY }, { 5, 1, 1, SGL } },
+    { 36, 40, { 75, 1, 2, VIS },   { 20, 1, 2, GMY }, { 5, 1, 1, LGL } },
+    { 41, 45, { 75, 2, 5, VIS },   { 20, 1, 2, LNE }, { 5, 1, 1, SRS } },
+    { 46, 50, { 75, 1, 2, DREAM }, { 20, 1, 2, GNE }, { 5, 1, 1, LRS } },
+    { 51, 55, { 75, 2, 5, DREAM }, { 20, 1, 2, LEE }, { 5, 1, 1, SBS } },
+    { 56, 60, { 75, 1, 2, ILL },   { 20, 1, 2, GEE }, { 5, 1, 1, LBS } },
+    { 61, 999, { 75, 2, 5, ILL },  { 20, 2, 3, GEE }, { 5, 1, 1, LBS } },
+  },
+  weapon = {  -- uncommon weapons
+    {  6, 15, { 20, 1, 2, SD },    { 80, 1, 2, LME } },
+    { 16, 20, { 20, 2, 3, SD },    { 75, 1, 2, GME }, { 5, 1, 1, SGS } },
+    { 21, 25, { 15, 4, 6, SD },    { 75, 1, 2, LAE }, { 10, 1, 1, SGS } },
+    { 26, 30, { 20, 1, 2, SOUL },  { 75, 1, 2, GAE }, { 5, 1, 1, LGS } },
+    { 31, 35, { 20, 2, 5, SOUL },  { 75, 1, 2, LMY }, { 5, 1, 1, SGL } },
+    { 36, 40, { 20, 1, 2, VIS },   { 75, 1, 2, GMY }, { 5, 1, 1, LGL } },
+    { 41, 45, { 20, 2, 5, VIS },   { 75, 1, 2, LNE }, { 5, 1, 1, SRS } },
+    { 46, 50, { 20, 1, 2, DREAM }, { 75, 1, 2, GNE }, { 5, 1, 1, LRS } },
+    { 51, 55, { 22, 2, 5, DREAM }, { 75, 1, 2, LEE }, { 3, 1, 1, SBS } },
+    { 56, 60, { 22, 1, 2, ILL },   { 75, 1, 2, GEE }, { 3, 1, 1, LBS } },
+    { 61, 999, { 22, 2, 5, ILL },  { 75, 2, 3, GEE }, { 3, 1, 1, LBS } },
+  },
+  rare = {    -- armour and weapons alike
+    {  1, 25, { 100, 1, 1, SGS } },
+    { 26, 30, { 100, 1, 1, LGS } },
+    { 31, 35, { 100, 1, 1, SGL } },
+    { 36, 40, { 100, 1, 1, LGL } },
+    { 41, 45, { 100, 1, 1, SRS } },
+    { 46, 50, { 100, 1, 1, LRS } },
+    { 51, 55, { 100, 1, 1, SBS } },
+    { 56, 999, { 99.5, 1, 1, LBS }, { 0.5, 1, 1, NEXUS } },
+  },
+  epic = {
+    { 40, 45, { 100, 2, 4, SRS } },
+    { 46, 50, { 100, 2, 4, LRS } },
+    { 51, 55, { 100, 2, 4, SBS } },
+    { 56, 60, { 100, 1, 1, NEXUS } },
+    { 61, 999, { 100, 1, 2, NEXUS } },
+  },
 }
-D.NEXUS_CRYSTAL = 20725
 
 function ns.AddProfessionData(t)
   D.professions[t.skillLine] = { name = t.profession, skillLine = t.skillLine, recipes = t.recipes or {} }

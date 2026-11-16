@@ -11,7 +11,7 @@ Open your profession window and the ranked list appears beside it, with the best
 - **Cost per skill point** – every recipe is ranked by what a point really costs you, counting the chance that a yellow or green recipe gives no point at all.
 - **Cheapest reagents** – each reagent is priced the cheapest way you can get it: vendor, Auction House, or crafting or smelting it yourself (bars are priced from ore when your Mining skill can smelt them).
 - **Resale value** – optionally counts what you get back for the item you make (vendor price, or AH price after the cut and a sell-through rate).
-- **Disenchant value** – for enchanters, a green, blue or purple item you make is also valued by what it disenchants into at your Auctionator prices, whenever that beats selling it.
+- **Disenchant value** – a green, blue or purple item you make is also valued by what it disenchants into at your Auctionator prices, whenever that beats selling it. On for characters with Enchanting; bind-on-pickup items only count it when the character itself has Enchanting, and items made by Enchanting can't be disenchanted.
 - **In the crafting window** – under each recipe: your skill-up chance, the orange/yellow/green/grey thresholds, and the cost per point with vendor and AH resale.
 - **Follows your profession** – the list switches to whichever profession window you open; click its title (or `/bsu prof`) to switch by hand.
 - **Live recipe colours** – at your current skill, the game's own recipe colour wins if it disagrees with the data.

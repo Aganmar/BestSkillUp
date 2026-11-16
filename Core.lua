@@ -296,7 +296,7 @@ end
 -- Is disenchant value counted? Set by /bsu de, else on for characters with Enchanting.
 function ns.UseDisenchant()
   if DB.disenchant ~= nil then return DB.disenchant end
-  return CDB ~= nil and CDB.profs[333] ~= nil and CDB.profs[333].skill ~= nil
+  return ns.HasEnchanting()
 end
 
 local function matValue(id)
@@ -324,38 +324,55 @@ local function itemBasics(id)
 end
 function ns.OnItemInfo(id) if deWaiting[id] then deWaiting[id] = nil; return true end end
 
+-- Items made by Enchanting (wands, rods, ...) can't be disenchanted.
+local enchanterMade = { [11290] = true } -- Greater Mystic Wand (Classic ID)
+local function indexEnchanterMade()
+  local P = D.professions[333]
+  if P then for _, r in pairs(P.recipes) do if r[2] > 0 then enchanterMade[r[2]] = true end end end
+end
+
+local function rowValue(rows, ilvl)
+  for _, row in ipairs(rows) do
+    if ilvl >= row[1] and ilvl <= row[2] then
+      local v = 0
+      for i = 3, #row do
+        local chance, lo, hi, mat = row[i][1], row[i][2], row[i][3], row[i][4]
+        v = v + chance / 100 * (lo + hi) / 2 * matValue(mat)
+      end
+      return v
+    end
+  end
+  return 0
+end
+
 -- Expected AH value (after cut and sell-through) of disenchanting one of this item; 0 if it can't be.
 function ns.DisenchantValue(id)
-  if not id or id == 0 then return 0 end
+  if not id or id == 0 or enchanterMade[id] then return 0 end
   local quality, ilvl, classID = itemBasics(id)
   if not ilvl or (classID ~= 2 and classID ~= 4) or not quality or quality < 2 or quality > 4 then return 0 end
-  local row
-  for _, t in ipairs(D.disenchant) do if ilvl >= t[1] and ilvl <= t[2] then row = t; break end end
-  if not row then return 0 end
-  local function avg(a, b) return (a + b) / 2 end
-  if quality == 2 then
-    local weapon = classID == 2
-    local shard = row[9] and 0.05 or 0
-    local main = 0.75 + (row[9] and 0 or 0.05)
-    local dustP, essP = weapon and 0.20 or main, weapon and main or 0.20
-    local v = dustP * avg(row[4], row[5]) * matValue(row[3]) + essP * avg(row[7], row[8]) * matValue(row[6])
-    if row[9] then v = v + shard * matValue(row[9]) end
-    return v
-  end
-  local shardID = row[9] or 10978
-  if quality == 3 then
-    if row[10] then return 0.995 * matValue(shardID) + 0.005 * matValue(D.NEXUS_CRYSTAL) end
-    return matValue(shardID)
-  end
-  if ilvl <= 55 then return 3 * matValue(shardID) end
-  return matValue(D.NEXUS_CRYSTAL)
+  local T = D.disenchant
+  if quality == 2 then return rowValue(classID == 2 and T.weapon or T.armor, ilvl) end
+  if quality == 4 and ilvl >= 40 then return rowValue(T.epic, ilvl) end
+  return rowValue(T.rare, ilvl)   -- rare, and the few epics below item level 40
+end
+
+-- Has this character trained Enchanting?
+function ns.HasEnchanting()
+  return CDB ~= nil and CDB.profs[333] ~= nil and CDB.profs[333].skill ~= nil
+end
+
+-- Disenchant value counted for this item: the setting is on, and a bind-on-pickup item
+-- only when this character can disenchant it itself (it can't be sent to an enchanter).
+function ns.DisenchantCounts(id)
+  if not ns.UseDisenchant() then return false end
+  return ns.HasEnchanting() or not ns.IsBoP(id)
 end
 
 function ns.ResaleValue(id, mode)
   mode = mode or DB.resale
   if not id or id == 0 or mode == "none" then return 0, "" end
   if mode == "de" then return ns.DisenchantValue(id), "disenchant" end
-  local de = ns.UseDisenchant() and mode ~= "ahonly" and ns.DisenchantValue(id) or 0
+  local de = mode ~= "ahonly" and ns.DisenchantCounts(id) and ns.DisenchantValue(id) or 0
   local vend = ns.SellPrice(id)
   if mode == "vendor" or ns.IsBoP(id) then
     if de > vend then return de, "disenchant" end
@@ -533,6 +550,7 @@ f:SetScript("OnEvent", function(_, ev, arg1)
     ns.active = pickActive()
     addDisenchant()
     indexMakers()
+    indexEnchanterMade()
   elseif ev == "PLAYER_LOGIN" then
     readSkillLines()
     ns.active = pickActive()
