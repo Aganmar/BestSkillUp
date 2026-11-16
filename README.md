@@ -4,12 +4,12 @@
 
 Find the **cheapest way to level your professions** in **World of Warcraft: Forever**. BestSkillUp ranks every recipe you can make by its expected gold cost per skill point, using your [Auctionator](https://www.curseforge.com/wow/addons/auctionator) prices.
 
-Open your profession window and the ranked list appears beside it, with the best recipe to craft right now at the top. Supports **Blacksmithing** and **Cooking**.
+Open your profession window and the ranked list appears beside it, with the best recipe to craft right now at the top. Supports **Blacksmithing**, **Mining** (smelting), **Cooking** and **First Aid**.
 
 ## Features
 
 - **Cost per skill point** – every recipe is ranked by what a point really costs you, counting the chance that a yellow or green recipe gives no point at all.
-- **Cheapest reagents** – each reagent is priced the cheapest way you can get it: vendor, Auction House, or crafting or smelting it yourself.
+- **Cheapest reagents** – each reagent is priced the cheapest way you can get it: vendor, Auction House, or crafting or smelting it yourself (bars are priced from ore when your Mining skill can smelt them).
 - **Resale value** – optionally counts what you get back for the item you make (vendor price, or AH price after the cut and a sell-through rate).
 - **In the crafting window** – under each recipe: your skill-up chance, the orange/yellow/green/grey thresholds, and the cost per point with vendor and AH resale.
 - **Follows your profession** – the list switches to whichever profession window you open; click its title (or `/bsu prof`) to switch by hand.

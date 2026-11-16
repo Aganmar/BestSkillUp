@@ -1,6 +1,6 @@
 # BestSkillUp — hand-off
 
-WoW: Forever add-on that ranks profession recipes by **expected gold per skill point**, using Auctionator prices. Blacksmithing and Cooking. Version 0.7.2, Interface 16001. Licensed GPL v3 (`LICENSE`, shipped in the release zip).
+WoW: Forever add-on that ranks profession recipes by **expected gold per skill point**, using Auctionator prices. Blacksmithing, Mining (smelting), Cooking and First Aid. Version 0.8.0, Interface 16001. Licensed GPL v3 (`LICENSE`, shipped in the release zip).
 
 - Source (git repo): `C:\Users\User\BestSkillUp`, pushed to the private GitHub repo https://github.com/Aganmar/BestSkillUp
 - Install path (managed by WowUp from the GitHub releases): `C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns\BestSkillUp`
@@ -20,22 +20,22 @@ chance (Classic rule)   = orange 100%, grey 0%, yellow/green = (grey − skill) 
 - **Reagent cost** (`ns.UnitCost`, recursive, memoised, depth ≤ 5): cheapest of manual override → vendor → Auctionator AH → crafting/smelting it from its own reagents → Wowhead average price (fallback, toggle `useWH`).
 - **Value of what you make** (`ns.ResaleValue`): `none` / `vendor` (vendor sell price) / `ah` (AH price × (1 − AH cut) × sell-through, or vendor if higher). BoP items always use vendor value.
 - **Live colour override** (`ns.Chance`): at your current skill, the game's own recipe difficulty wins if it disagrees with the data.
-- **Professions**: each `Data_<Profession>.lua` registers itself with `ns.AddProfessionData` (`Data.lua`). The list shows the *active* profession: the one whose window you last opened (`ns.SetActive`), switchable by clicking the list's title or `/bsu prof`. Reagent crafting (`ns.UnitCost`) looks across every profession's recipes plus Mining smelts.
+- **Professions**: each `Data_<Profession>.lua` registers itself with `ns.AddProfessionData` (`Data.lua`). The list shows the *active* profession: the one whose window you last opened (`ns.SetActive`), switchable by clicking the list's title or `/bsu prof`. Reagent crafting (`ns.UnitCost`) looks across every profession's recipes; Mining's smelts count as "smelt" (the `reagents.smelt` option, your Mining skill) rather than "craft".
 - **Ranking** (`ns.Evaluate(skill, skillLine)`, both default to the active profession): every usable recipe with chance > 0, sorted by cost per point, then chance, then ID. Recipes with an unpriced reagent sort last. Recipes you know always count; the source and "unlearned" filters only apply to recipes you don't know.
 
 ## Files
 
 | File | What it does |
 |---|---|
-| `BestSkillUp.toc` | Load order: Data → Data_Blacksmithing → Data_Cooking → Core → UI → Native. OptionalDeps Auctionator, EllesmereUI, EllesmereUIBlizzardSkin. SavedVariables `BestSkillUpDB`, per-character `BestSkillUpCharDB`. |
+| `BestSkillUp.toc` | Load order: Data → Data_Blacksmithing → Data_Mining → Data_Cooking → Data_FirstAid → Core → UI → Native. OptionalDeps Auctionator, EllesmereUI, EllesmereUIBlizzardSkin. SavedVariables `BestSkillUpDB`, per-character `BestSkillUpCharDB`. |
 | `Data.lua` | Data registry: `ns.Data.professions[skillLine] = { name, skillLine, recipes }`, `ns.Data.order` (load order), and the merged `ns.Data.items[id] = { name, quality, vendorSell, wowheadAvg }`, `ns.Data.vendor[id]`, `ns.Data.mining` (smelting recipes). |
-| `Data_Blacksmithing.lua`, `Data_Cooking.lua` | **Generated, don't hand-edit.** `ns.AddProfessionData{ profession, skillLine, recipes = { [spellID] = { name, outputItemID, minMade, maxMade, orange, yellow, green, grey, source, { reagentID, qty, … } } }, items, vendor[, mining] }`. Blacksmithing is skillLine 164 (and carries Mining 186 smelts), Cooking 185. |
+| `Data_Blacksmithing.lua`, `Data_Mining.lua`, `Data_Cooking.lua`, `Data_FirstAid.lua` | **Generated, don't hand-edit.** `ns.AddProfessionData{ profession, skillLine, recipes = { [spellID] = { name, outputItemID, minMade, maxMade, orange, yellow, green, grey, source, { reagentID, qty, … } } }, items, vendor[, mining] }`. Skill lines: Blacksmithing 164, Mining 186, Cooking 185, First Aid 129. The Blacksmithing file still carries an older `mining` smelt table; it is only used when `Data_Mining.lua` isn't loaded. |
 | `Core.lua` | Settings defaults, prices, skill-up maths, evaluation, scanning the open Professions window (known recipes, current skill, live difficulty), events, `/bsu` slash command. |
 | `UI.lua` | Suggestion list docked to the Professions window, options panel, item tooltips (comparison tooltips suppressed unless Shift is held), Shift-click → copyable Wowhead URL, EllesmereUI skin via `EllesmereUI.RegisterSkin`. |
 | `Native.lua` | Adds lines under the recipe in Blizzard's crafting window: `Skill-up: N%` + coloured thresholds (orange/yellow/green/grey), `Cost Per Point (Vendor)`, and `Cost Per Point (AH)` (omitted for BoP output). Hidden when no skill-up is possible. Hooks `ProfessionsFrame.CraftingPage.SchematicForm:Init`; anchors under Auctionator's crafting-cost frame if present. |
 | `Media/` | Icon sources `BestSkillUp.svg` (full detail) and `BestSkillUp_64.svg` (no sparks or highlights, for small sizes). `BestSkillUp_400.png` (README) = `rsvg-convert -w 400 -h 400 BestSkillUp.svg`. `BestSkillUp.tga` (in-game, `## IconTexture` in the TOC, shipped in the release zip) = `rsvg-convert -w 64 -h 64 BestSkillUp_64.svg`, saved as a 32-bit RGBA TGA (Pillow). |
 | `Tools/gen_data.py` | Builds a `Data_<Profession>.lua` (see below). |
-| `Tools/data/` | Wowhead exports used for the data files (only `cooking.json` so far). |
+| `Tools/data/` | Wowhead exports used for the data files (`cooking.json`, `mining.json`, `firstaid.json`; Blacksmithing's wasn't kept). |
 
 ## Settings (`BestSkillUpDB`)
 
@@ -50,10 +50,12 @@ Per character (`BestSkillUpCharDB`): `profs[skillLine] = { known, scanned, skill
 
 ```
 python3 Tools/gen_data.py Cooking 185 Tools/data/cooking.json Data_Cooking.lua
-python3 Tools/gen_data.py Blacksmithing 164 <blacksmithing.json> Data_Blacksmithing.lua <mining.json>
+python3 Tools/gen_data.py Mining 186 Tools/data/mining.json Data_Mining.lua
+python3 Tools/gen_data.py "First Aid" 129 Tools/data/firstaid.json Data_FirstAid.lua
+python3 Tools/gen_data.py Blacksmithing 164 <blacksmithing.json> Data_Blacksmithing.lua
 ```
 
-The inputs are Wowhead (WoW Forever) exports from the profession's skill page (e.g. `https://www.wowhead.com/forever/skill=185/cooking`): `g_listviews.recipes` (colors, reagents, creates, learnedat, source) and `g_items` (jsonequip buyprice/sellprice/avgbuyout), mapped in the browser console into the shape described at the top of `gen_data.py`. `Tools/data/cooking.json` is kept. **The Blacksmithing and Mining exports weren't kept**, so regenerating Blacksmithing needs them scraped again (its data file was converted to the new format by hand, contents unchanged). Notes:
+The inputs are Wowhead (WoW Forever) exports from the profession's skill page (e.g. `https://www.wowhead.com/forever/skill=185/cooking`): `g_listviews.recipes` (colors, reagents, creates, learnedat, source) and `g_items` (jsonequip buyprice/sellprice/avgbuyout), mapped in the browser console into the shape described at the top of `gen_data.py`. The Cooking, Mining and First Aid exports are kept in `Tools/data/`. **The Blacksmithing export wasn't kept**, so regenerating Blacksmithing needs it scraped again (the optional old-format mining argument is no longer needed) (its data file was converted to the new format by hand, contents unchanged). Notes:
 - Thresholds: orange = colors[0], else learnedat; starter recipes (no orange, no trainer, learnedat ≤ 20) are treated as skill 1. Wowhead's `learnedat` is sometimes wrong (e.g. Rough Sharpening Stone).
 - Recipes whose grey threshold is 0 (unfinished Wowhead entries such as Cleansing Stew) are left out.
 - Wowhead's `buyprice` is a template value, not proof an item is vendor-sold; vendor items come from the `VENDOR_NAMES` list in the script.
@@ -70,4 +72,4 @@ The inputs are Wowhead (WoW Forever) exports from the profession's skill page (e
 ## Open items
 
 1. **Ranking skew (undecided).** With resale on, profitable crafts with a low skill-up chance can outrank reliable ones, because a negative net cost divided by a small chance looks great. Suggested fix: a "profit credit %" setting (count only part of the resale value) plus a "cost per craft" column, so cheap-but-unlikely recipes are visible for what they are.
-2. **More professions.** Adding one is: export its Wowhead skill page into `Tools/data/<profession>.json`, run `gen_data.py`, add the file to the TOC (after `Data.lua`, before `Core.lua`), and add any vendor-sold reagents to `VENDOR_NAMES`. Cooking's starter recipes (Charred Wolf Meat, Roasted Boar Meat) have learn levels from Wowhead that are too high; they still show once the Cooking window has been opened, because known recipes always count.
+2. **More professions.** Adding one is: export its Wowhead skill page into `Tools/data/<profession>.json`, run `gen_data.py`, add the file to the TOC (after `Data.lua`, before `Core.lua`), and add any vendor-sold reagents to `VENDOR_NAMES`. Starter recipes often have learn levels from Wowhead that are too high (Cooking's Charred Wolf Meat, First Aid's Linen Bandage, Mining's Smelt Copper); they still show once that profession's window has been opened, because known recipes always count. Mining's list only covers smelting; skill from mining nodes isn't ranked.

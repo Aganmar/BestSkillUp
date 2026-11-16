@@ -36,6 +36,8 @@ VENDOR_NAMES = {
     # Cooking
     "Shiny Red Apple", "Melon Juice", "Moonberry Juice", "Sweet Nectar", "Morning Glory Dew", "Rhapsody Malt",
     "Skin of Dwarven Stout", "Holiday Spices", "Holiday Spirits",
+    # First Aid
+    "Flagon of Dwarven Honeymead", "Thunder Ale", "Bottle of Dalaran Noir",
 }
 
 def group(src):

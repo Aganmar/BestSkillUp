@@ -201,12 +201,21 @@ local function addMaker(id, r, kind)
 end
 local function indexMakers()
   for line, P in pairs(D.professions) do for id, r in pairs(P.recipes) do addMaker(id, r, line) end end
-  for id, r in pairs(D.mining) do addMaker(id, r, "mining") end
+  -- The Blacksmithing file's own smelt table is only a fallback for when Mining's data isn't loaded.
+  if not D.professions[D.miningSkillLine] then
+    for id, r in pairs(D.mining) do addMaker(id, r, "mining") end
+  end
 end
 
 -- Can you make this intermediate yourself right now?
 local function canMake(m)
-  if m.kind == "mining" then return DB.reagents.smelt and CDB.mining ~= nil and CDB.mining >= m.r[5] end
+  if m.kind == "mining" or m.kind == D.miningSkillLine then
+    if not DB.reagents.smelt then return false end
+    local P = ns.Prof(D.miningSkillLine)
+    if P.known[m.id] then return true end
+    local skill = P.skill or CDB.mining
+    return skill ~= nil and skill >= m.r[5]
+  end
   if not DB.reagents.craft then return false end
   local P = ns.Prof(m.kind)
   if P.known[m.id] then return true end
@@ -243,7 +252,7 @@ function ns.UnitCost(id, depth)
           if ok then
             local per = cost / ns.Made(m.r)
             if not best or per < best.p then
-              best = { p = per, src = (m.kind == "mining" and "smelt" or "craft"), craft = m.r, craftID = m.id }
+              best = { p = per, src = ((m.kind == "mining" or m.kind == D.miningSkillLine) and "smelt" or "craft"), craft = m.r, craftID = m.id }
             end
           end
         end
@@ -349,8 +358,8 @@ local function readSkillLines()
       local p = idx[i]
       if p then
         local _, _, rank, maxRank, _, _, line = GetProfessionInfo(p)
-        if D.professions[line] then local P = ns.Prof(line); P.skill, P.maxSkill = rank, maxRank
-        elseif line == D.miningSkillLine then CDB.mining = rank end
+        if line == D.miningSkillLine then CDB.mining = rank end
+        if D.professions[line] then local P = ns.Prof(line); P.skill, P.maxSkill = rank, maxRank end
       end
     end
   elseif GetNumSkillLines and GetSkillLineInfo then
@@ -384,7 +393,10 @@ function ns.ScanOpenProfession()
   if T.IsTradeSkillLinked and T.IsTradeSkillLinked() then return false end   -- someone else's link
   ns.SetActive(line)
   local P = ns.Prof(line)
-  if info.skillLevel and info.skillLevel > 0 then P.skill, P.maxSkill = info.skillLevel, info.maxSkillLevel end
+  if info.skillLevel and info.skillLevel > 0 then
+    P.skill, P.maxSkill = info.skillLevel, info.maxSkillLevel
+    if line == D.miningSkillLine then CDB.mining = info.skillLevel end
+  end
   local ids = T.GetAllRecipeIDs and T.GetAllRecipeIDs()
   if not ids or #ids == 0 then return false end
   local known, diff, craftable = {}, {}, {}
