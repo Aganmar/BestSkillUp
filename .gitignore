@@ -1,0 +1,9 @@
+# Backups and editor/OS clutter
+*.bsu-bak
+*.bak
+*~
+Thumbs.db
+Desktop.ini
+.vscode/
+# Wowhead JSON exports (large, regenerate with Tools/gen_data.py)
+*.json
