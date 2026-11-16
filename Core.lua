@@ -171,13 +171,9 @@ local function ownAHPrice(id)
   end
 end
 
--- Own Auctionator price, or the synced one when it comes from a newer scan.
+-- Auctionator's price for the item (shared prices from other add-ons arrive through Auctionator).
 function ns.AHPrice(id)
-  local own = ownAHPrice(id)
-  local sh = DB.shared
-  local shp = sh and sh.prices and sh.prices[id]
-  if shp and (not own or (sh.time or 0) > (ns.OwnScanTime and ns.OwnScanTime() or 0)) then return shp end
-  return own
+  return ownAHPrice(id)
 end
 
 function ns.VendorPrice(id)
@@ -441,6 +437,8 @@ f:SetScript("OnEvent", function(_, ev, arg1)
     DB, CDB = BestSkillUpDB, BestSkillUpCharDB
     ns.DB, ns.CDB = DB, CDB
     migrate()
+    -- Price syncing was removed in 0.7.0: drop its saved data.
+    BestSkillUpDB.shared, BestSkillUpDB.partner, BestSkillUpDB.pushAuctionator = nil, nil, nil
     ns.active = pickActive()
     indexMakers()
   elseif ev == "PLAYER_LOGIN" then
@@ -497,18 +495,11 @@ SlashCmdList.BESTSKILLUP = function(msg)
       ns.Print(ns.ItemName(id) .. " " .. (DB.overrides[id] and ns.Money(DB.overrides[id]) or "cleared"))
       ns.Refresh(0)
     end
-  elseif cmd == "partner" then
-    if ns.SetPartner then ns.SetPartner((msg or ""):match("^%S+%s+(%S+)")) end
-  elseif cmd == "auctionator" then
-    BestSkillUpDB.pushAuctionator = (BestSkillUpDB.pushAuctionator == false)
-    ns.Print("Write synced prices to Auctionator " .. (BestSkillUpDB.pushAuctionator and "on" or "off"))
-  elseif cmd == "sync" then
-    if ns.SyncHello then ns.SyncHello(); ns.SyncStatus() end
   elseif cmd == "debug" then
     if ns.DebugNative then ns.DebugNative() else ns.Print("Native.lua not loaded - restart the game") end
   elseif cmd == "reset" then
     DB.point = nil; if ns.UI then ns.UI.ResetPosition() end
   else
-    ns.Print("/bsu  prof  opt  partner [name]  sync  auctionator  resale none/vendor/ah  unlearned  source <type>  wh  price <id> [c]  debug  reset")
+    ns.Print("/bsu  prof  opt  resale none/vendor/ah  unlearned  source <type>  wh  price <id> [c]  debug  reset")
   end
 end
