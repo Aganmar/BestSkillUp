@@ -58,6 +58,7 @@ local function showRecipeTooltip(row)
   costTip:AddDoubleLine("Net", ns.Money(x.c.net), 0.6, 0.6, 0.6)
   local o, y, g, gr = ns.Thresholds(x.r)
   costTip:AddLine(("|cffff8040%d|r |cffffff00%d|r |cff40c040%d|r |cff808080%d|r"):format(o, y, g, gr))
+  if x.r.pinned then costTip:AddLine("Disenchant an item you already have. Odds estimated (Classic).", 0.6, 0.6, 0.6) end
   if not x.known and ns.Prof().scanned then costTip:AddLine("Not learned · " .. x.r[9], 1, 0.4, 0.4) end
   costTip:Show()
   UI.hovered = row

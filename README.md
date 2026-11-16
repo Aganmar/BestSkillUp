@@ -15,6 +15,7 @@ Open your profession window and the ranked list appears beside it, with the best
 - **Follows your profession** – the list switches to whichever profession window you open; click its title (or `/bsu prof`) to switch by hand.
 - **Live recipe colours** – at your current skill, the game's own recipe colour wins if it disagrees with the data.
 - **Knows what you've learned** – recipes you know always appear; choose whether to also suggest unlearned recipes, and from which sources (trainer, vendor, drop, quest).
+- **Disenchanting** – below Enchanting 60, Disenchant sits at the top of the Enchanting list at no cost, with its skill-up chance (estimated from Classic: always up to 20, falling to nothing at 60).
 - **Your own prices** – set a manual price for any item with `/bsu price`.
 - **Tooltips** – hover a row for the full cost breakdown; Shift-click for a Wowhead link you can copy.
 - **EllesmereUI styling** when installed.

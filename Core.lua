@@ -199,6 +199,18 @@ local MAKERS = {}
 local function addMaker(id, r, kind)
   if r[2] > 0 then MAKERS[r[2]] = MAKERS[r[2]] or {}; table.insert(MAKERS[r[2]], { id = id, r = r, kind = kind }) end
 end
+-- Disenchant: free (you disenchant an item you already have), always first in the Enchanting list
+-- while it can still give a point. WoW: Forever's odds aren't published; these are the Classic ones:
+-- a point every time up to 20, less often from 40, none from 60.
+ns.DISENCHANT = 13262
+local function addDisenchant()
+  local P = D.professions[333]
+  if not P then return end
+  local r = { "Disenchant", 0, 1, 1, 1, 20, 40, 60, "trainer", {} }
+  r.pinned = true
+  P.recipes[ns.DISENCHANT] = r
+end
+
 local function indexMakers()
   for line, P in pairs(D.professions) do for id, r in pairs(P.recipes) do addMaker(id, r, line) end end
   -- The Blacksmithing file's own smelt table is only a fallback for when Mining's data isn't loaded.
@@ -316,7 +328,7 @@ end
 -- Recipes you know always count (the data's learn level can be wrong); the source and
 -- "unlearned" filters only decide which recipes you don't know yet are suggested.
 local function usable(id, r, s, P)
-  if P.known[id] then return true end
+  if P.known[id] or r.pinned then return true end
   if not DB.sources[r[9]] then return false end
   if s < r[5] then return false end
   if P.scanned and not DB.includeUnlearned then return false end
@@ -338,11 +350,12 @@ function ns.Evaluate(s, line)
       if p > 0 then
         local c = ns.RecipeCost(r)
         out[#out + 1] = { id = id, r = r, p = p, c = c, colour = ns.Colour(r, s),
-          perPt = (c.missing > 0) and math.huge or (c.net / p), known = P.known[id] }
+          perPt = (c.missing > 0) and math.huge or (c.net / p), known = P.known[id] or r.pinned }
       end
     end
   end
   table.sort(out, function(a, b)
+    if (a.r.pinned or false) ~= (b.r.pinned or false) then return a.r.pinned == true end
     if a.perPt ~= b.perPt then return a.perPt < b.perPt end
     if a.p ~= b.p then return a.p > b.p end
     return a.id < b.id
@@ -452,6 +465,7 @@ f:SetScript("OnEvent", function(_, ev, arg1)
     -- Price syncing was removed in 0.7.0: drop its saved data.
     BestSkillUpDB.shared, BestSkillUpDB.partner, BestSkillUpDB.pushAuctionator = nil, nil, nil
     ns.active = pickActive()
+    addDisenchant()
     indexMakers()
   elseif ev == "PLAYER_LOGIN" then
     readSkillLines()
