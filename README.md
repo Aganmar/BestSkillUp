@@ -15,6 +15,7 @@ Open your profession window and the ranked list appears beside it, with the best
 - **In the crafting window** – under each recipe: your skill-up chance, the orange/yellow/green/grey thresholds, and the cost per point with vendor and AH resale.
 - **Follows your profession** – the list switches to whichever profession window you open; click its title (or `/bsu prof`) to switch by hand.
 - **Live recipe colours** – at your current skill, the game's own recipe colour wins if it disagrees with the data.
+- **Working Overtime** – set your rank of the Legacy talent (Options, or `/bsu overtime 0-5`) and yellow/green skill-up chances are raised by 4% per rank (×1.2 at 5/5).
 - **Learns the real thresholds** – every time you open a profession window, the colours the game shows are remembered (for all your characters) and used to correct Wowhead's orange/yellow/green/grey levels where WoW: Forever differs. The tooltip says when a recipe has been corrected.
 - **Knows what you've learned** – recipes you know always appear; choose whether to also suggest unlearned recipes, and from which sources (trainer, vendor, drop, quest).
 - **Disenchanting** – below Enchanting 60, Disenchant sits at the top of the Enchanting list at no cost, with its skill-up chance (estimated from Classic: always up to 20, falling to nothing at 60).
@@ -42,6 +43,7 @@ Auctionator is optional but recommended: without it, BestSkillUp falls back to v
 | `/bsu unlearned` | Also suggest recipes you haven't learned |
 | `/bsu source trainer\|vendor\|drop\|quest\|other` | Include or exclude recipes by where they're learned |
 | `/bsu de [auto]` | Count disenchant value of what you make on/off (auto: on for characters with Enchanting) |
+| `/bsu overtime <0-5>` | Your Working Overtime rank (Legacy talent), for this character |
 | `/bsu wh` | Use Wowhead average prices when Auctionator has none |
 | `/bsu price <itemID> [copper]` | Set your own price for an item (blank clears it) |
 | `/bsu debug` | Show what the crafting-window lines are doing |
@@ -58,6 +60,8 @@ cost per point = (reagent cost − value of what you make) ÷ chance to skill up
 | Orange | 100% |
 | Yellow / green | Falls in a straight line from 100% at the yellow threshold to 0% at grey |
 | Grey | 0% (not listed) |
+
+With Working Overtime, yellow and green chances are multiplied by 1 + 4% per rank (×1.2 at 5/5), up to 100%.
 
 Each reagent costs the cheapest of:
 

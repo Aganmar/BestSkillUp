@@ -24,7 +24,7 @@ local DEFAULTS = {
   shown = true,
 }
 -- profs[skillLine] = { known = { [spellID] = true }, scanned, skill, maxSkill }; active = last profession opened
-local CHAR_DEFAULTS = { profs = {}, mining = nil, active = nil }
+local CHAR_DEFAULTS = { profs = {}, mining = nil, active = nil, overtime = 0 }   -- overtime: Working Overtime rank (Legacy talent)
 
 local DB, CDB
 ns.live = { diff = {}, craftable = {}, at = nil, line = nil }   -- live data from the open Professions window
@@ -141,7 +141,18 @@ end
 
 local LIVE_FALLBACK = { [0] = 1, [1] = 0.75, [2] = 0.25, [3] = 0 } -- optimal / medium / easy / trivial
 
+local baseChance
+-- Working Overtime (Legacy talent, per character): +4% per rank to the chance of a skill-up,
+-- read as a multiplier (x1.2 at 5/5). Orange stays 100%, grey stays 0%.
+function ns.OvertimeRank() return CDB and math.max(0, math.min(5, tonumber(CDB.overtime) or 0)) or 0 end
+function ns.OvertimeFactor() return 1 + 0.04 * ns.OvertimeRank() end
 function ns.Chance(id, r, s, line)
+  local p = baseChance(id, r, s, line)
+  if p > 0 and p < 1 then p = math.min(1, p * ns.OvertimeFactor()) end
+  return p
+end
+
+function baseChance(id, r, s, line)
   local _, y, _, gr = r[5], r[6], r[7], r[8]
   local p
   if s >= gr then p = 0
@@ -654,6 +665,11 @@ SlashCmdList.BESTSKILLUP = function(msg)
     if rest == "auto" then DB.disenchant = nil else DB.disenchant = not ns.UseDisenchant() end
     ns.Print("Disenchant value " .. (ns.UseDisenchant() and "on" or "off") .. (DB.disenchant == nil and " (auto: on with Enchanting)" or ""))
     ns.Refresh(0)
+  elseif cmd == "overtime" or cmd == "ot" then
+    local n = tonumber(rest)
+    if n then CDB.overtime = math.max(0, math.min(5, math.floor(n))) end
+    ns.Print(("Working Overtime %d/5 (skill-up chance x%.2f)"):format(ns.OvertimeRank(), ns.OvertimeFactor()))
+    ns.Refresh(0)
   elseif cmd == "wh" then
     DB.useWH = not DB.useWH; ns.Print("WH prices " .. (DB.useWH and "on" or "off")); ns.Refresh(0)
   elseif cmd == "price" then
@@ -669,6 +685,6 @@ SlashCmdList.BESTSKILLUP = function(msg)
   elseif cmd == "reset" then
     DB.point = nil; if ns.UI then ns.UI.ResetPosition() end
   else
-    ns.Print("/bsu  prof  opt  resale none/vendor/ah  unlearned  source <type>  de [auto]  wh  price <id> [c]  debug  reset")
+    ns.Print("/bsu  prof  opt  resale none/vendor/ah  unlearned  source <type>  de [auto]  overtime <0-5>  wh  price <id> [c]  debug  reset")
   end
 end

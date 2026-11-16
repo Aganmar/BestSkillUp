@@ -6,6 +6,7 @@ local ROWS, ROW_H, W = 16, 16, 340
 local TOP = 32
 local COLOURS = { orange = "|cffff8040", yellow = "|cffffff00", green = "|cff40c040", grey = "|cff808080" }
 local frame, rows, summary, optBtn, opts, unlearnedCB
+local overtimeText
 local list, offset, listFor = {}, 0, nil   -- the ranked list, the first row shown, and which profession it is for
 local scrollTrack, scrollThumb
 local checks = {}
@@ -68,6 +69,9 @@ local function showRecipeTooltip(row)
   costTip:AddDoubleLine("Net", ns.Money(x.c.net), 0.6, 0.6, 0.6)
   local o, y, g, gr = ns.Thresholds(x.r)
   costTip:AddLine(("|cffff8040%d|r |cffffff00%d|r |cff40c040%d|r |cff808080%d|r"):format(o, y, g, gr))
+  if ns.OvertimeRank() > 0 and x.p > 0 and x.p < 1 then
+    costTip:AddLine(("Includes Working Overtime %d/5 (x%.2f chance)"):format(ns.OvertimeRank(), ns.OvertimeFactor()), 0.6, 0.6, 0.6)
+  end
   if x.r.corrected then
     local b = x.r.base
     costTip:AddLine(("Colours corrected from your game (Wowhead: %d %d %d %d)"):format(b[1], b[2], b[3], b[4]), 0.6, 0.6, 0.6)
@@ -304,10 +308,31 @@ local function buildOptions()
   y = y - 46
   numBox(opts, "AH cut %", 4, y, "ahCut")
   numBox(opts, "Sell-through %", 112, y, "ahSellThrough")
+  y = y - 30
+
+  -- Working Overtime rank (this character): - n/5 +
+  local lbl = opts:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  lbl:SetPoint("TOPLEFT", 4, y - 3); lbl:SetText("Working Overtime")
+  local function stepper(text, x, delta)
+    local b = CreateFrame("Button", nil, opts, "UIPanelButtonTemplate")
+    b:SetSize(20, 18); b:SetPoint("TOPLEFT", x, y); b:SetText(text)
+    b:SetScript("OnClick", function()
+      ns.CDB.overtime = math.max(0, math.min(5, ns.OvertimeRank() + delta))
+      UI.SyncOptions(); ns.Refresh(0)
+    end)
+    return b
+  end
+  stepper("-", 112, -1)
+  overtimeText = opts:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  overtimeText:SetPoint("TOPLEFT", 136, y - 3)
+  stepper("+", 166, 1)
+  local note = opts:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  note:SetPoint("TOPLEFT", 192, y - 3); note:SetText("Legacy talent")
 end
 
 function UI.SyncOptions()
   for _, cb in ipairs(checks) do cb:SetChecked(cb.get() and true or false) end
+  if overtimeText then overtimeText:SetText(("%d/5"):format(ns.OvertimeRank())) end
   if unlearnedCB then unlearnedCB:SetChecked(DB().includeUnlearned) end
 end
 
