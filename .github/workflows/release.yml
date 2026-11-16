@@ -34,9 +34,9 @@ jobs:
           V="$VERSION"
           Z="BestSkillUp-$V-forever.zip"
           IFACE=$(grep -m1 '^## Interface:' BestSkillUp.toc | sed 's/^## Interface:[[:space:]]*//' | cut -d, -f1 | tr -d ' \r')
-          # Add-on files = the TOC, every file it loads, and the in-game icon (dev files such as Tools/ stay out).
+          # Add-on files = the TOC, every file it loads, the in-game icon and the licence (dev files such as Tools/ stay out).
           files=$(grep -v '^#' BestSkillUp.toc | tr -d '\r' | sed '/^[[:space:]]*$/d')
-          git archive --format=zip --prefix=BestSkillUp/ -o "$Z" HEAD BestSkillUp.toc $files Media/BestSkillUp.tga
+          git archive --format=zip --prefix=BestSkillUp/ -o "$Z" HEAD BestSkillUp.toc $files Media/BestSkillUp.tga LICENSE
           cat > release.json <<EOF
           {
             "releases": [

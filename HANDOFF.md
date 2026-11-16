@@ -1,13 +1,13 @@
 # BestSkillUp — hand-off
 
-WoW: Forever add-on that ranks profession recipes by **expected gold per skill point**, using Auctionator prices. Blacksmithing and Cooking. Version 0.7.1, Interface 16001.
+WoW: Forever add-on that ranks profession recipes by **expected gold per skill point**, using Auctionator prices. Blacksmithing and Cooking. Version 0.7.2, Interface 16001. Licensed GPL v3 (`LICENSE`, shipped in the release zip).
 
 - Source (git repo): `C:\Users\User\BestSkillUp`, pushed to the private GitHub repo https://github.com/Aganmar/BestSkillUp
 - Install path (managed by WowUp from the GitHub releases): `C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns\BestSkillUp`
 
 ## Releasing
 
-Bump `## Version:` in `BestSkillUp.toc`, commit and push, then either push a matching tag (`git tag v0.5.1 && git push origin v0.5.1`) or press **Run workflow** on the Release workflow in the repo's Actions tab (it tags the commit `v<TOC version>`). The `Release` workflow (`.github/workflows/release.yml`) checks a pushed tag matches the TOC version, builds `BestSkillUp-<tag>-forever.zip` (the TOC, the files it loads and `Media/BestSkillUp.tga`, under a `BestSkillUp/` folder) plus a `release.json` (flavor `forever`), and publishes the GitHub release that WowUp installs from.
+Bump `## Version:` in `BestSkillUp.toc`, commit and push, then either push a matching tag (`git tag v0.5.1 && git push origin v0.5.1`) or press **Run workflow** on the Release workflow in the repo's Actions tab (it tags the commit `v<TOC version>`). The `Release` workflow (`.github/workflows/release.yml`) checks a pushed tag matches the TOC version, builds `BestSkillUp-<tag>-forever.zip` (the TOC, the files it loads, `Media/BestSkillUp.tga` and `LICENSE`, under a `BestSkillUp/` folder) plus a `release.json` (flavor `forever`), and publishes the GitHub release that WowUp installs from.
 
 ## How it works
 

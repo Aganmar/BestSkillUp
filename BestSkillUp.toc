@@ -1,7 +1,8 @@
 ## Interface: 16001
 ## Title: BestSkillUp
 ## Notes: Cheapest Blacksmithing and Cooking skill-ups (Auctionator prices)
-## Version: 0.7.1
+## Version: 0.7.2
+## X-License: GPL-3.0
 ## IconTexture: Interface\AddOns\BestSkillUp\Media\BestSkillUp
 ## OptionalDeps: Auctionator, EllesmereUI, EllesmereUIBlizzardSkin
 ## SavedVariables: BestSkillUpDB

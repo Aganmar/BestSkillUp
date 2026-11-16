@@ -66,6 +66,10 @@ Each reagent costs the cheapest of:
 
 Recipes with a reagent that has no price at all sort to the bottom.
 
+## License
+
+BestSkillUp is free software under the [GNU General Public License v3.0](LICENSE).
+
 ## Credits
 
 - Recipe data (skill thresholds, reagents, item prices) from [Wowhead's WoW: Forever database](https://www.wowhead.com/forever). It can be off for some recipes.
