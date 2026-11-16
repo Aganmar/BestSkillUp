@@ -15,6 +15,7 @@ Open your profession window and the ranked list appears beside it, with the best
 - **In the crafting window** – under each recipe: your skill-up chance, the orange/yellow/green/grey thresholds, and the cost per point with vendor and AH resale.
 - **Follows your profession** – the list switches to whichever profession window you open; click its title (or `/bsu prof`) to switch by hand.
 - **Live recipe colours** – at your current skill, the game's own recipe colour wins if it disagrees with the data.
+- **Learns the real thresholds** – every time you open a profession window, the colours the game shows are remembered (for all your characters) and used to correct Wowhead's orange/yellow/green/grey levels where WoW: Forever differs. The tooltip says when a recipe has been corrected.
 - **Knows what you've learned** – recipes you know always appear; choose whether to also suggest unlearned recipes, and from which sources (trainer, vendor, drop, quest).
 - **Disenchanting** – below Enchanting 60, Disenchant sits at the top of the Enchanting list at no cost, with its skill-up chance (estimated from Classic: always up to 20, falling to nothing at 60).
 - **Your own prices** – set a manual price for any item with `/bsu price`.

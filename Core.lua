@@ -20,6 +20,7 @@ local DEFAULTS = {
   overrides = {},             -- [itemID] = copper
   disenchant = nil,           -- count disenchant value of what you make: nil = if this character has Enchanting, or true/false
   point = nil,                -- saved window position
+  seen = {},                  -- [spellID] = { [difficulty] = { lowSkill, highSkill } }: colours the game showed (all characters)
   shown = true,
 }
 -- profs[skillLine] = { known = { [spellID] = true }, scanned, skill, maxSkill }; active = last profession opened
@@ -157,6 +158,53 @@ function ns.Chance(id, r, s, line)
     if live == 0 then return 1 end
   end
   return p
+end
+
+-- ---------------------------------------------------------------- colours learned from the game
+-- Wowhead's thresholds are sometimes wrong for WoW: Forever (Mithril Spurs is trained at 215, not 235).
+-- Every scan records each known recipe's colour at that skill (0 orange, 1 yellow, 2 green, 3 grey);
+-- the recipe's thresholds are then moved to fit everything seen. r.base keeps Wowhead's values.
+local function clamp(v, lo, hi)
+  if lo and v < lo then v = lo end
+  if hi and v > hi then v = hi end
+  return v
+end
+local function mn(a, b) if a == nil then return b elseif b == nil then return a end return math.min(a, b) end
+local function mx(a, b) if a == nil then return b elseif b == nil then return a end return math.max(a, b) end
+
+function ns.ApplySeen(id)
+  local S = DB.seen[id]
+  local r = S and ns.FindRecipe(id)
+  if not r then return end
+  if not r.base then r.base = { r[5], r[6], r[7], r[8] } end
+  local o, y, g, gr = r.base[1], r.base[2], r.base[3], r.base[4]
+  local lo = function(d) return S[d] and S[d][1] end
+  local hi = function(d) return S[d] and S[d][2] end
+  -- Known at a lower skill than Wowhead's learn level: shift the whole recipe down (a first guess).
+  local first = mn(mn(lo(0), lo(1)), mn(lo(2), lo(3)))
+  if first and first < o then
+    local shift = o - first
+    o, y, g, gr = first, y - shift, g - shift, gr - shift
+  end
+  -- Then fit what was seen: orange below yellow, yellow below green, green below grey.
+  y = clamp(math.max(y, o), mx(nil, hi(0) and hi(0) + 1), mn(mn(lo(1), lo(2)), lo(3)))
+  g = clamp(math.max(g, y), mx(hi(0), hi(1)) and mx(hi(0), hi(1)) + 1, mn(lo(2), lo(3)))
+  gr = clamp(math.max(gr, g), mx(mx(hi(0), hi(1)), hi(2)) and mx(mx(hi(0), hi(1)), hi(2)) + 1, lo(3))
+  r[5], r[6], r[7], r[8] = o, y, g, gr
+  r.corrected = (o ~= r.base[1] or y ~= r.base[2] or g ~= r.base[3] or gr ~= r.base[4]) or nil
+end
+
+local function recordSeen(id, d, s)
+  if d == nil or s == nil or not ns.FindRecipe(id) then return end
+  local S = DB.seen[id] or {}
+  DB.seen[id] = S
+  local e = S[d]
+  if e then
+    if s < e[1] then e[1] = s end
+    if s > e[2] then e[2] = s end
+  else
+    S[d] = { s, s }
+  end
 end
 
 -- ---------------------------------------------------------------- prices
@@ -506,6 +554,12 @@ function ns.ScanOpenProfession()
   end
   P.known, P.scanned = known, true
   ns.live.diff, ns.live.craftable, ns.live.at, ns.live.line = diff, craftable, P.skill, line
+  if P.skill then
+    for id, d in pairs(diff) do
+      if known[id] then recordSeen(id, d, P.skill); ns.ApplySeen(id) end
+    end
+    ns.ClearCache()
+  end
   return true
 end
 
@@ -549,6 +603,7 @@ f:SetScript("OnEvent", function(_, ev, arg1)
     BestSkillUpDB.shared, BestSkillUpDB.partner, BestSkillUpDB.pushAuctionator = nil, nil, nil
     ns.active = pickActive()
     addDisenchant()
+    for id in pairs(DB.seen) do ns.ApplySeen(id) end
     indexMakers()
     indexEnchanterMade()
   elseif ev == "PLAYER_LOGIN" then
