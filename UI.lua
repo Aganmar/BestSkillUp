@@ -305,6 +305,7 @@ local function buildOptions()
     check(opts, it[1], cols[i], y, function() return DB().resale == it[2] end, function() DB().resale = it[2] end)
   end
   check(opts, "Disenchant", cols[1], y - 20, function() return ns.UseDisenchant() end, function(v) DB().disenchant = v end)
+  check(opts, "Salvager nearby", cols[2], y - 20, function() return DB().salvager end, function(v) DB().salvager = v and true or false end)
   y = y - 46
   numBox(opts, "AH cut %", 4, y, "ahCut")
   numBox(opts, "Sell-through %", 112, y, "ahSellThrough")
