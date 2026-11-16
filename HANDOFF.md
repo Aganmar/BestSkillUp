@@ -5,6 +5,10 @@ WoW: Forever add-on that ranks profession recipes by **expected gold per skill p
 - Source (git repo): `C:\Users\User\BestSkillUp`, pushed to the private GitHub repo https://github.com/Aganmar/BestSkillUp
 - Install path (managed by WowUp from the GitHub releases): `C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns\BestSkillUp`
 
+## Testing between releases
+
+Changes are committed and pushed as usual, but not released after every change. They are copied straight into the game's AddOns folder instead (what a release zip would contain: the TOC, the files it loads, `Media/BestSkillUp.tga`, `LICENSE`), with `Tools/Deploy.ps1` or the same copy done by hand. The TOC's `## Version` stays at the last release until the next one. A release is made once the changes add up to a sizeable difference; WowUp then installs it over the deployed copy.
+
 ## Releasing
 
 Bump `## Version:` in `BestSkillUp.toc`, commit and push, then either push a matching tag (`git tag v0.5.1 && git push origin v0.5.1`) or press **Run workflow** on the Release workflow in the repo's Actions tab (it tags the commit `v<TOC version>`). The `Release` workflow (`.github/workflows/release.yml`) checks a pushed tag matches the TOC version, builds `BestSkillUp-<tag>-forever.zip` (the TOC, the files it loads, `Media/BestSkillUp.tga` and `LICENSE`, under a `BestSkillUp/` folder) plus a `release.json` (flavor `forever`), and publishes the GitHub release that WowUp installs from.
@@ -37,6 +41,7 @@ chance (Classic rule)   = orange 100%, grey 0%, yellow/green = (grey − skill) 
 | `UI.lua` | Suggestion list docked to the Professions window (16 rows, scrolled with the mouse wheel / Shift+wheel or the drag bar; back to the top when the profession changes), options panel, item tooltips (comparison tooltips suppressed unless Shift is held), Shift-click → copyable Wowhead URL, EllesmereUI skin via `EllesmereUI.RegisterSkin`. |
 | `Native.lua` | Adds lines under the recipe in Blizzard's crafting window: `Skill-up: N%` + coloured thresholds (orange/yellow/green/grey), `Cost Per Point (Vendor)`, and `Cost Per Point (AH)` (omitted for BoP output). Hidden when no skill-up is possible. Hooks `ProfessionsFrame.CraftingPage.SchematicForm:Init`; anchors under Auctionator's crafting-cost frame if present. |
 | `Media/` | Icon sources `BestSkillUp.svg` (full detail) and `BestSkillUp_64.svg` (no sparks or highlights, for small sizes). `BestSkillUp_400.png` (README) = `rsvg-convert -w 400 -h 400 BestSkillUp.svg`. `BestSkillUp.tga` (in-game, `## IconTexture` in the TOC, shipped in the release zip) = `rsvg-convert -w 64 -h 64 BestSkillUp_64.svg`, saved as a 32-bit RGBA TGA (Pillow). |
+| `Tools/Deploy.ps1` | Copies the add-on from the repository into the AddOns folder for testing between releases (and removes files a release wouldn't ship). |
 | `Tools/gen_data.py` | Builds a `Data_<Profession>.lua` (see below). |
 | `Tools/data/` | Wowhead exports used for the data files (`cooking.json`, `mining.json`, `firstaid.json`, `enchanting.json`; Blacksmithing's wasn't kept). |
 
