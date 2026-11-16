@@ -6,6 +6,8 @@ local ROWS, ROW_H, W = 16, 16, 340
 local TOP = 32
 local COLOURS = { orange = "|cffff8040", yellow = "|cffffff00", green = "|cff40c040", grey = "|cff808080" }
 local frame, rows, summary, optBtn, opts, unlearnedCB
+local list, offset, listFor = {}, 0, nil   -- the ranked list, the first row shown, and which profession it is for
+local scrollTrack, scrollThumb
 local checks = {}
 local skin                       -- EllesmereUI skin facade, if available
 local skinFonts, skinBoxes = {}, {}
@@ -80,7 +82,7 @@ end)
 
 local function makeRow(i)
   local b = CreateFrame("Button", nil, frame)
-  b:SetSize(W - 16, ROW_H)
+  b:SetSize(W - 24, ROW_H)
   b:SetPoint("TOPLEFT", 8, -TOP - (i - 1) * ROW_H)
   b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
   b.left = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -99,12 +101,39 @@ local function makeRow(i)
   return b
 end
 
-local function fillList()
-  local list = ns.Evaluate()
+-- ---------------------------------------------------------------- scrolling
+local function maxOffset() return math.max(0, #list - ROWS) end
+
+local function updateScrollbar()
+  local n = #list
+  if showOpts or n <= ROWS then scrollTrack:Hide(); return end
+  scrollTrack:Show()
+  local h = scrollTrack:GetHeight()
+  local th = math.max(16, h * ROWS / n)
+  scrollThumb:SetHeight(th)
+  scrollThumb:ClearAllPoints()
+  scrollThumb:SetPoint("TOP", scrollTrack, "TOP", 0, -(h - th) * offset / maxOffset())
+end
+
+local renderRows
+local function scrollTo(o)
+  o = math.max(0, math.min(maxOffset(), math.floor(o + 0.5)))
+  if o == offset then return end
+  offset = o
+  hideTooltips()
+  renderRows()
+end
+
+function renderRows()
   local scanned = ns.Prof().scanned
-  summary:SetText(#list .. " options")
+  local n = #list
+  if n > ROWS then
+    summary:SetText(("%d-%d of %d options"):format(offset + 1, math.min(offset + ROWS, n), n))
+  else
+    summary:SetText(n .. " options")
+  end
   for i = 1, ROWS do
-    local x, b = list[i], rows[i]
+    local x, b = list[offset + i], rows[i]
     if x and not showOpts then
       b.x = x
       if x.r[2] > 0 and C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, x.r[2]) end
@@ -116,6 +145,49 @@ local function fillList()
       b.x = nil; b:Hide()
     end
   end
+  updateScrollbar()
+end
+
+local function fillList()
+  list = ns.Evaluate()
+  if listFor ~= ns.active then offset, listFor = 0, ns.active end   -- new profession: back to the top
+  offset = math.min(offset, maxOffset())
+  renderRows()
+end
+
+function UI.ScrollInfo() return offset, #list, ROWS end
+
+-- Mouse wheel: 3 rows a notch, a page with Shift. The bar on the right can be dragged or clicked.
+local function buildScroll()
+  frame:EnableMouseWheel(true)
+  frame:SetScript("OnMouseWheel", function(_, delta)
+    if showOpts then return end
+    scrollTo(offset - delta * (IsShiftKeyDown() and ROWS or 3))
+  end)
+  scrollTrack = CreateFrame("Button", nil, frame)
+  scrollTrack:SetPoint("TOPRIGHT", -6, -TOP)
+  scrollTrack:SetSize(6, ROWS * ROW_H)
+  local bg = scrollTrack:CreateTexture(nil, "BACKGROUND")
+  bg:SetAllPoints(); bg:SetColorTexture(1, 1, 1, 0.08)
+  scrollThumb = CreateFrame("Frame", nil, scrollTrack)
+  scrollThumb:SetWidth(6)
+  local tex = scrollThumb:CreateTexture(nil, "ARTWORK")
+  tex:SetAllPoints(); tex:SetColorTexture(0.91, 0.76, 0.35, 0.7)
+  local function offsetAtCursor()
+    local _, y = GetCursorPosition()
+    y = y / scrollTrack:GetEffectiveScale()
+    local top, h = scrollTrack:GetTop(), scrollTrack:GetHeight()
+    local th = scrollThumb:GetHeight()
+    local frac = (top - y - th / 2) / math.max(1, h - th)
+    return frac * maxOffset()
+  end
+  scrollTrack:SetScript("OnMouseDown", function(self)
+    scrollTo(offsetAtCursor())
+    self:SetScript("OnUpdate", function() scrollTo(offsetAtCursor()) end)
+  end)
+  scrollTrack:SetScript("OnMouseUp", function(self) self:SetScript("OnUpdate", nil) end)
+  scrollTrack:SetScript("OnHide", function(self) self:SetScript("OnUpdate", nil) end)
+  scrollTrack:Hide()
 end
 
 -- Addons can't open a browser: show the Wowhead URL ready to copy.
@@ -293,6 +365,7 @@ local function build()
 
   rows = {}
   for i = 1, ROWS do rows[i] = makeRow(i) end
+  buildScroll()
   buildOptions()
 
   summary = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")

@@ -18,6 +18,7 @@ Open your profession window and the ranked list appears beside it, with the best
 - **Knows what you've learned** – recipes you know always appear; choose whether to also suggest unlearned recipes, and from which sources (trainer, vendor, drop, quest).
 - **Disenchanting** – below Enchanting 60, Disenchant sits at the top of the Enchanting list at no cost, with its skill-up chance (estimated from Classic: always up to 20, falling to nothing at 60).
 - **Your own prices** – set a manual price for any item with `/bsu price`.
+- **Scrollable list** – every option, not just the top 16: mouse wheel (Shift for a page) or drag the bar on the right.
 - **Tooltips** – hover a row for the full cost breakdown; Shift-click for a Wowhead link you can copy.
 - **EllesmereUI styling** when installed.
 
