@@ -1,4 +1,6 @@
-# Builds a WowUp-compatible release when a version tag (v1.2.3) is pushed:
+# Builds a WowUp-compatible release, either when a version tag (v1.2.3) is pushed
+# or from the Actions tab ("Run workflow"), which tags the current commit with
+# v<TOC ## Version>:
 #   BestSkillUp-<tag>-forever.zip  (BestSkillUp/ folder at the zip root, add-on files only)
 #   release.json                   (BigWigs packager format, flavor "forever")
 name: Release
@@ -6,6 +8,7 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,16 +19,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check TOC version matches tag
+      - name: Work out the version
         run: |
           toc=$(grep -m1 '^## Version:' BestSkillUp.toc | sed 's/^## Version:[[:space:]]*//' | tr -d '\r')
-          if [ "v$toc" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match TOC version $toc"; exit 1
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            if [ "v$toc" != "$GITHUB_REF_NAME" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match TOC version $toc"; exit 1
+            fi
           fi
+          echo "VERSION=v$toc" >> "$GITHUB_ENV"
 
       - name: Build zip and release.json
         run: |
-          V="$GITHUB_REF_NAME"
+          V="$VERSION"
           Z="BestSkillUp-$V-forever.zip"
           IFACE=$(grep -m1 '^## Interface:' BestSkillUp.toc | sed 's/^## Interface:[[:space:]]*//' | cut -d, -f1 | tr -d ' \r')
           # Add-on files = the TOC plus every file it loads (dev files such as Tools/ stay out).
@@ -54,5 +60,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "$ZIP" release.json \
-            --title "BestSkillUp $GITHUB_REF_NAME" --generate-notes
+          gh release create "$VERSION" "$ZIP" release.json --target "$GITHUB_SHA" \
+            --title "BestSkillUp $VERSION" --generate-notes

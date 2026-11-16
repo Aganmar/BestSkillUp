@@ -7,7 +7,7 @@ WoW: Forever add-on that ranks profession recipes by **expected gold per skill p
 
 ## Releasing
 
-Bump `## Version:` in `BestSkillUp.toc`, commit, then tag and push: `git tag v0.5.1 && git push origin main v0.5.1`. The `Release` workflow (`.github/workflows/release.yml`) checks the tag matches the TOC version, builds `BestSkillUp-<tag>-forever.zip` (the TOC and the files it loads, under a `BestSkillUp/` folder) plus a `release.json` (flavor `forever`), and publishes the GitHub release that WowUp installs from.
+Bump `## Version:` in `BestSkillUp.toc`, commit and push, then either push a matching tag (`git tag v0.5.1 && git push origin v0.5.1`) or press **Run workflow** on the Release workflow in the repo's Actions tab (it tags the commit `v<TOC version>`). The `Release` workflow (`.github/workflows/release.yml`) checks a pushed tag matches the TOC version, builds `BestSkillUp-<tag>-forever.zip` (the TOC and the files it loads, under a `BestSkillUp/` folder) plus a `release.json` (flavor `forever`), and publishes the GitHub release that WowUp installs from.
 
 ## How it works
 
