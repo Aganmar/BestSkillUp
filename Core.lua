@@ -142,13 +142,15 @@ end
 local LIVE_FALLBACK = { [0] = 1, [1] = 0.75, [2] = 0.25, [3] = 0 } -- optimal / medium / easy / trivial
 
 local baseChance
--- Working Overtime (Legacy talent, per character): +4% per rank to the chance of a skill-up,
--- read as a multiplier (x1.2 at 5/5). Orange stays 100%, grey stays 0%.
+-- Working Overtime (Legacy talent, per character): 4% per rank. It takes that share off the chance of
+-- NOT getting a point: 1 - (1 - p) * (1 - 0.04 * rank), so 80% -> 84% and 10% -> 28% at 5/5.
+-- (Measured: Lesser Magic Wand 100->115 took 52 crafts at 5/5; x1.2 predicts ~111, this ~44.)
+-- Orange stays 100%, grey stays 0%.
 function ns.OvertimeRank() return CDB and math.max(0, math.min(5, tonumber(CDB.overtime) or 0)) or 0 end
-function ns.OvertimeFactor() return 1 + 0.04 * ns.OvertimeRank() end
+function ns.OvertimeBonus() return 0.04 * ns.OvertimeRank() end
 function ns.Chance(id, r, s, line)
   local p = baseChance(id, r, s, line)
-  if p > 0 and p < 1 then p = math.min(1, p * ns.OvertimeFactor()) end
+  if p > 0 and p < 1 then p = 1 - (1 - p) * (1 - ns.OvertimeBonus()) end
   return p
 end
 
@@ -668,7 +670,7 @@ SlashCmdList.BESTSKILLUP = function(msg)
   elseif cmd == "overtime" or cmd == "ot" then
     local n = tonumber(rest)
     if n then CDB.overtime = math.max(0, math.min(5, math.floor(n))) end
-    ns.Print(("Working Overtime %d/5 (skill-up chance x%.2f)"):format(ns.OvertimeRank(), ns.OvertimeFactor()))
+    ns.Print(("Working Overtime %d/5 (%d%% fewer failed skill-ups on yellow/green)"):format(ns.OvertimeRank(), ns.OvertimeBonus() * 100 + 0.5))
     ns.Refresh(0)
   elseif cmd == "wh" then
     DB.useWH = not DB.useWH; ns.Print("WH prices " .. (DB.useWH and "on" or "off")); ns.Refresh(0)

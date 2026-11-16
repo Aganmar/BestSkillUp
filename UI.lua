@@ -70,7 +70,7 @@ local function showRecipeTooltip(row)
   local o, y, g, gr = ns.Thresholds(x.r)
   costTip:AddLine(("|cffff8040%d|r |cffffff00%d|r |cff40c040%d|r |cff808080%d|r"):format(o, y, g, gr))
   if ns.OvertimeRank() > 0 and x.p > 0 and x.p < 1 then
-    costTip:AddLine(("Includes Working Overtime %d/5 (x%.2f chance)"):format(ns.OvertimeRank(), ns.OvertimeFactor()), 0.6, 0.6, 0.6)
+    costTip:AddLine(("Includes Working Overtime %d/5 (%d%% fewer misses)"):format(ns.OvertimeRank(), ns.OvertimeBonus() * 100 + 0.5), 0.6, 0.6, 0.6)
   end
   if x.r.corrected then
     local b = x.r.base
