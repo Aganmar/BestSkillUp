@@ -13,7 +13,6 @@ local function skinFont(fs) skinFonts[#skinFonts + 1] = fs; if skin then skin.Fo
 local openedBySlash, dismissed, showOpts = false, false, false
 
 local function DB() return ns.DB end
-local function CDB() return ns.CDB end
 
 -- ---------------------------------------------------------------- list
 local itemTip, costTip
@@ -59,7 +58,7 @@ local function showRecipeTooltip(row)
   costTip:AddDoubleLine("Net", ns.Money(x.c.net), 0.6, 0.6, 0.6)
   local o, y, g, gr = ns.Thresholds(x.r)
   costTip:AddLine(("|cffff8040%d|r |cffffff00%d|r |cff40c040%d|r |cff808080%d|r"):format(o, y, g, gr))
-  if not x.known and CDB().scanned then costTip:AddLine("Not learned · " .. x.r[9], 1, 0.4, 0.4) end
+  if not x.known and ns.Prof().scanned then costTip:AddLine("Not learned · " .. x.r[9], 1, 0.4, 0.4) end
   costTip:Show()
   UI.hovered = row
 end
@@ -100,14 +99,15 @@ local function makeRow(i)
 end
 
 local function fillList()
-  local list = ns.Evaluate(CDB().skill or 1)
+  local list = ns.Evaluate()
+  local scanned = ns.Prof().scanned
   summary:SetText(#list .. " options")
   for i = 1, ROWS do
     local x, b = list[i], rows[i]
     if x and not showOpts then
       b.x = x
       if x.r[2] > 0 and C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, x.r[2]) end
-      b.left:SetText(COLOURS[x.colour] .. x.r[1] .. "|r" .. ((not x.known and CDB().scanned) and " |cffff6060*|r" or ""))
+      b.left:SetText(COLOURS[x.colour] .. x.r[1] .. "|r" .. ((not x.known and scanned) and " |cffff6060*|r" or ""))
       b.mid:SetText(("%d%%"):format(x.p * 100))
       b.right:SetText(ns.Money(x.perPt))
       b:Show()
@@ -207,7 +207,7 @@ local function buildOptions()
   check(opts, "Vendor", cols[1], y, function() return DB().reagents.vendor end, function(v) DB().reagents.vendor = v end)
   check(opts, "Auction House", cols[2], y, function() return DB().reagents.ah end, function(v) DB().reagents.ah = v end)
   check(opts, "Wowhead avg", cols[3], y, function() return DB().useWH end, function(v) DB().useWH = v end)
-  check(opts, "Craft (BS)", cols[1], y - 20, function() return DB().reagents.craft end, function(v) DB().reagents.craft = v end)
+  check(opts, "Craft", cols[1], y - 20, function() return DB().reagents.craft end, function(v) DB().reagents.craft = v end)
   check(opts, "Smelt (Mining)", cols[2], y - 20, function() return DB().reagents.smelt end, function(v) DB().reagents.smelt = v end)
   y = y - 48
 
@@ -228,8 +228,8 @@ end
 -- ---------------------------------------------------------------- frame
 function UI.Update()
   if not frame or not frame:IsShown() then return end
-  local c = CDB()
-  frame.title:SetText("BSU · Blacksmithing " .. (c.skill and (c.skill .. "/" .. (c.maxSkill or "?")) or "?"))
+  local c = ns.Prof()
+  frame.title:SetText("BSU · " .. ns.ProfName() .. " " .. (c.skill and (c.skill .. "/" .. (c.maxSkill or "?")) or "?"))
   optBtn:SetText(showOpts and "Back" or "Options")
   opts:SetShown(showOpts)
   unlearnedCB:SetShown(not showOpts)
@@ -268,6 +268,15 @@ local function build()
 
   frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   frame.title:SetPoint("TOPLEFT", 10, -10)
+  -- Click the title to show the next profession.
+  local switch = CreateFrame("Button", nil, frame)
+  switch:SetPoint("TOPLEFT", frame.title, "TOPLEFT", -2, 2)
+  switch:SetPoint("BOTTOMRIGHT", frame.title, "BOTTOMRIGHT", 2, -2)
+  switch:SetScript("OnClick", function() ns.CycleActive(); ns.Refresh(0) end)
+  switch:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText("Click to show the next profession", 1, 1, 1); GameTooltip:Show()
+  end)
+  switch:SetScript("OnLeave", function() GameTooltip:Hide() end)
   local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
   frame.close = close
   close:SetPoint("TOPRIGHT", 2, 2)

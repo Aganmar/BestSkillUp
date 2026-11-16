@@ -1,5 +1,4 @@
 local _, ns = ...
-local D = ns.Data
 
 -- Adds "Skill-up % · Exp cost/pt" to the Blizzard Professions schematic, using the BestSkillUp settings.
 local form, line, hooked
@@ -21,11 +20,12 @@ local function update()
   if not line then return end
   local info = form.GetRecipeInfo and form:GetRecipeInfo()
   local id = info and info.recipeID
-  local r = id and D.recipes[id]
+  local r, pline = ns.FindRecipe(id)
   if not r or not ns.CDB then line:Hide(); return end
-  local s = ns.CDB.skill or 1
-  local p = ns.Chance(id, r, s)
-  if s < r[5] or p <= 0 then line:Hide(); return end
+  local P = ns.Prof(pline)
+  local s = P.skill or 1
+  local p = ns.Chance(id, r, s, pline)
+  if (s < r[5] and not P.known[id]) or p <= 0 then line:Hide(); return end
   local text
   do
     local function per(mode)
@@ -66,10 +66,11 @@ ns.HookNative = hook
 function ns.DebugNative()
   local info = form and form.GetRecipeInfo and form:GetRecipeInfo()
   local id = info and info.recipeID
-  local r = id and D.recipes[id]
-  ns.Print(("native hooked=%s form=%s recipe=%s inData=%s skill=%s chance=%s shown=%s"):format(
-    tostring(hooked), tostring(form ~= nil), tostring(id), tostring(r ~= nil), tostring(ns.CDB and ns.CDB.skill),
-    r and ("%.2f"):format(ns.Chance(id, r, ns.CDB.skill or 1)) or "-", tostring(line and line:IsShown())))
+  local r, pline = ns.FindRecipe(id)
+  local skill = r and ns.CDB and ns.Prof(pline).skill
+  ns.Print(("native hooked=%s form=%s recipe=%s inData=%s prof=%s skill=%s chance=%s shown=%s"):format(
+    tostring(hooked), tostring(form ~= nil), tostring(id), tostring(r ~= nil), r and ns.ProfName(pline) or "-", tostring(skill),
+    r and ("%.2f"):format(ns.Chance(id, r, skill or 1, pline)) or "-", tostring(line and line:IsShown())))
 end
 
 local f = CreateFrame("Frame")

@@ -5,5 +5,6 @@
 Thumbs.db
 Desktop.ini
 .vscode/
-# Wowhead JSON exports (large, regenerate with Tools/gen_data.py)
+# Stray JSON (Wowhead exports used for the data files are kept in Tools/data/)
 *.json
+!Tools/data/*.json

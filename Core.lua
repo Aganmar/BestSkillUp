@@ -2,6 +2,7 @@
 --   expected cost per point = (reagent cost - value of what you make) / chance to skill up
 --   chance (Classic rule): orange 100%, grey 0%, yellow/green = (grey - skill) / (grey - yellow)
 -- Reagents are costed at the cheapest of: vendor, Auctionator AH price, or crafting/smelting them (recursively).
+-- Professions: every Data_<Profession>.lua registers itself in ns.Data.professions (see Data.lua).
 
 local ADDON, ns = ...
 local CALLER = "BestSkillUp"
@@ -20,10 +21,11 @@ local DEFAULTS = {
   point = nil,                -- saved window position
   shown = true,
 }
-local CHAR_DEFAULTS = { known = {}, scanned = false, skill = nil, maxSkill = nil, mining = nil }
+-- profs[skillLine] = { known = { [spellID] = true }, scanned, skill, maxSkill }; active = last profession opened
+local CHAR_DEFAULTS = { profs = {}, mining = nil, active = nil }
 
 local DB, CDB
-ns.live = { diff = {}, craftable = {}, at = nil }   -- live data from the open Professions window
+ns.live = { diff = {}, craftable = {}, at = nil, line = nil }   -- live data from the open Professions window
 
 -- ---------------------------------------------------------------- utils
 local function copyDefaults(dst, src)
@@ -64,6 +66,66 @@ function ns.ItemColor(id)
   return c and c.hex or "|cffffffff"
 end
 
+-- ---------------------------------------------------------------- professions
+-- Per-character state for one profession (the active one by default).
+function ns.Prof(line)
+  line = line or ns.active
+  local p = CDB.profs[line]
+  if not p then p = { known = {}, scanned = false }; CDB.profs[line] = p end
+  return p
+end
+
+function ns.ProfName(line)
+  local P = D.professions[line or ns.active]
+  return P and P.name or "?"
+end
+
+-- Recipe data and profession for a spell ID, from any profession.
+function ns.FindRecipe(id)
+  if not id then return end
+  for line, P in pairs(D.professions) do
+    local r = P.recipes[id]
+    if r then return r, line end
+  end
+end
+
+-- Which profession the list shows: the last one opened, else one this character has, else the first.
+local function pickActive()
+  if CDB.active and D.professions[CDB.active] then return CDB.active end
+  for _, line in ipairs(D.order) do
+    if CDB.profs[line] and CDB.profs[line].skill then return line end
+  end
+  return D.order[1]
+end
+
+function ns.SetActive(line)
+  if not D.professions[line] then return end
+  ns.active = line
+  CDB.active = line
+end
+
+-- Next profession in load order (for the list's title button and /bsu prof).
+function ns.CycleActive()
+  local n = #D.order
+  for i, line in ipairs(D.order) do
+    if line == ns.active then ns.SetActive(D.order[i % n + 1]); return end
+  end
+  ns.SetActive(D.order[1])
+end
+
+-- Saved data from before Cooking was added was Blacksmithing-only.
+local function migrate()
+  if CDB.known or CDB.skill then
+    local p = CDB.profs[164] or {}
+    p.known = p.known or CDB.known or {}
+    if p.scanned == nil then p.scanned = CDB.scanned end
+    p.skill = p.skill or CDB.skill
+    p.maxSkill = p.maxSkill or CDB.maxSkill
+    CDB.profs[164] = p
+  end
+  CDB.known, CDB.scanned, CDB.skill, CDB.maxSkill = nil, nil, nil, nil
+end
+
 -- ---------------------------------------------------------------- recipe maths
 -- recipe = { name, out, minMade, maxMade, orange, yellow, green, grey, source, reagents }
 function ns.Thresholds(r) return r[5], r[6], r[7], r[8] end
@@ -77,7 +139,7 @@ end
 
 local LIVE_FALLBACK = { [0] = 1, [1] = 0.75, [2] = 0.25, [3] = 0 } -- optimal / medium / easy / trivial
 
-function ns.Chance(id, r, s)
+function ns.Chance(id, r, s, line)
   local _, y, _, gr = r[5], r[6], r[7], r[8]
   local p
   if s >= gr then p = 0
@@ -87,7 +149,8 @@ function ns.Chance(id, r, s)
   if p < 0 then p = 0 elseif p > 1 then p = 1 end
   -- At your current skill the game's own colour wins if it disagrees with the data.
   local live = ns.live.diff[id]
-  if live ~= nil and CDB and s == CDB.skill then
+  line = line or ns.active
+  if live ~= nil and CDB and ns.live.line == line and s == ns.Prof(line).skill then
     if live == 3 then return 0 end
     if p == 0 then return LIVE_FALLBACK[live] or 0 end
     if live == 0 then return 1 end
@@ -135,19 +198,23 @@ function ns.SellPrice(id)
   return sell
 end
 
--- Which recipes produce which item (Blacksmithing + Mining smelts).
+-- Which recipes produce which item (every profession's recipes + Mining smelts).
 local MAKERS = {}
+local function addMaker(id, r, kind)
+  if r[2] > 0 then MAKERS[r[2]] = MAKERS[r[2]] or {}; table.insert(MAKERS[r[2]], { id = id, r = r, kind = kind }) end
+end
 local function indexMakers()
-  for id, r in pairs(D.recipes) do if r[2] > 0 then MAKERS[r[2]] = MAKERS[r[2]] or {}; table.insert(MAKERS[r[2]], { id = id, r = r, kind = "bs" }) end end
-  for id, r in pairs(D.mining) do if r[2] > 0 then MAKERS[r[2]] = MAKERS[r[2]] or {}; table.insert(MAKERS[r[2]], { id = id, r = r, kind = "mining" }) end end
+  for line, P in pairs(D.professions) do for id, r in pairs(P.recipes) do addMaker(id, r, line) end end
+  for id, r in pairs(D.mining) do addMaker(id, r, "mining") end
 end
 
 -- Can you make this intermediate yourself right now?
 local function canMake(m)
   if m.kind == "mining" then return DB.reagents.smelt and CDB.mining ~= nil and CDB.mining >= m.r[5] end
   if not DB.reagents.craft then return false end
-  if CDB.known[m.id] then return true end
-  return DB.includeUnlearned and m.r[9] == "trainer" and (CDB.skill or 1) >= m.r[5]
+  local P = ns.Prof(m.kind)
+  if P.known[m.id] then return true end
+  return DB.includeUnlearned and m.r[9] == "trainer" and P.skill ~= nil and P.skill >= m.r[5]
 end
 
 local memo, visiting = {}, {}
@@ -236,25 +303,37 @@ function ns.RecipeCost(r, mode)
 end
 
 -- ---------------------------------------------------------------- evaluation
-function ns.IsKnown(id) return CDB.known[id] == true end
-
-local function usable(id, r, s)
-  if not DB.sources[r[9]] then return false end
-  if s < r[5] then return false end
-  if CDB.scanned and not CDB.known[id] and not DB.includeUnlearned then return false end
-  return true
+function ns.IsKnown(id, line)
+  local _, l = ns.FindRecipe(id)
+  return ns.Prof(line or l).known[id] == true
 end
 
--- All recipes that can give a point at skill s, cheapest expected cost per point first.
-function ns.Evaluate(s)
+-- Recipes you know always count (the data's learn level can be wrong); the source and
+-- "unlearned" filters only decide which recipes you don't know yet are suggested.
+local function usable(id, r, s, P)
+  if P.known[id] then return true end
+  if not DB.sources[r[9]] then return false end
+  if s < r[5] then return false end
+  if P.scanned and not DB.includeUnlearned then return false end
+  return true
+end
+ns.Usable = usable
+
+-- All recipes of a profession (default: the active one) that can give a point at skill s
+-- (default: your skill in it), cheapest expected cost per point first.
+function ns.Evaluate(s, line)
+  line = line or ns.active
+  local P, data = ns.Prof(line), D.professions[line]
+  s = s or P.skill or 1
   local out = {}
-  for id, r in pairs(D.recipes) do
-    if usable(id, r, s) then
-      local p = ns.Chance(id, r, s)
+  if not data then return out end
+  for id, r in pairs(data.recipes) do
+    if usable(id, r, s, P) then
+      local p = ns.Chance(id, r, s, line)
       if p > 0 then
         local c = ns.RecipeCost(r)
         out[#out + 1] = { id = id, r = r, p = p, c = c, colour = ns.Colour(r, s),
-          perPt = (c.missing > 0) and math.huge or (c.net / p), known = CDB.known[id] }
+          perPt = (c.missing > 0) and math.huge or (c.net / p), known = P.known[id] }
       end
     end
   end
@@ -274,7 +353,7 @@ local function readSkillLines()
       local p = idx[i]
       if p then
         local _, _, rank, maxRank, _, _, line = GetProfessionInfo(p)
-        if line == D.skillLine then CDB.skill, CDB.maxSkill = rank, maxRank
+        if D.professions[line] then local P = ns.Prof(line); P.skill, P.maxSkill = rank, maxRank
         elseif line == D.miningSkillLine then CDB.mining = rank end
       end
     end
@@ -282,29 +361,34 @@ local function readSkillLines()
     for i = 1, GetNumSkillLines() do
       local name, header, _, rank, _, _, maxRank = GetSkillLineInfo(i)
       if not header then
-        if name == "Blacksmithing" then CDB.skill, CDB.maxSkill = rank, maxRank
-        elseif name == "Mining" then CDB.mining = rank end
+        if name == "Mining" then CDB.mining = rank end
+        for line, P in pairs(D.professions) do
+          if name == P.name then local st = ns.Prof(line); st.skill, st.maxSkill = rank, maxRank end
+        end
       end
     end
   end
 end
 
-local function isBlacksmithingOpen()
+-- The open Professions window's skill line, if it's one we have data for.
+local function openProfession()
   local T = C_TradeSkillUI
-  if not T or not T.GetBaseProfessionInfo then return false end
+  if not T or not T.GetBaseProfessionInfo then return end
   local ok, info = pcall(T.GetBaseProfessionInfo)
-  if not ok or not info then return false end
-  if info.professionID == D.skillLine or info.parentProfessionID == D.skillLine then return true, info end
-  return false
+  if not ok or not info then return end
+  if D.professions[info.professionID] then return info.professionID, info end
+  if D.professions[info.parentProfessionID] then return info.parentProfessionID, info end
 end
 
 function ns.ScanOpenProfession()
   local T = C_TradeSkillUI
-  local open, info = isBlacksmithingOpen()
-  if not open then return false end
+  local line, info = openProfession()
+  if not line then return false end
   if T.IsTradeSkillReady and not T.IsTradeSkillReady() then return false end
   if T.IsTradeSkillLinked and T.IsTradeSkillLinked() then return false end   -- someone else's link
-  if info.skillLevel and info.skillLevel > 0 then CDB.skill, CDB.maxSkill = info.skillLevel, info.maxSkillLevel end
+  ns.SetActive(line)
+  local P = ns.Prof(line)
+  if info.skillLevel and info.skillLevel > 0 then P.skill, P.maxSkill = info.skillLevel, info.maxSkillLevel end
   local ids = T.GetAllRecipeIDs and T.GetAllRecipeIDs()
   if not ids or #ids == 0 then return false end
   local known, diff, craftable = {}, {}, {}
@@ -316,8 +400,8 @@ function ns.ScanOpenProfession()
       if ri.numAvailable then craftable[id] = ri.numAvailable end
     end
   end
-  CDB.known, CDB.scanned = known, true
-  ns.live.diff, ns.live.craftable, ns.live.at = diff, craftable, CDB.skill
+  P.known, P.scanned = known, true
+  ns.live.diff, ns.live.craftable, ns.live.at, ns.live.line = diff, craftable, P.skill, line
   return true
 end
 
@@ -356,9 +440,12 @@ f:SetScript("OnEvent", function(_, ev, arg1)
     copyDefaults(BestSkillUpCharDB, CHAR_DEFAULTS)
     DB, CDB = BestSkillUpDB, BestSkillUpCharDB
     ns.DB, ns.CDB = DB, CDB
+    migrate()
+    ns.active = pickActive()
     indexMakers()
   elseif ev == "PLAYER_LOGIN" then
     readSkillLines()
+    ns.active = pickActive()
     local A = AuctionatorAPI()
     if A and A.RegisterForDBUpdate then pcall(A.RegisterForDBUpdate, CALLER, function() ns.Refresh(0.5) end) end
     if ns.UI then ns.UI.Init() end
@@ -390,6 +477,8 @@ SlashCmdList.BESTSKILLUP = function(msg)
   local cmd, rest = (msg or ""):lower():match("^(%S*)%s*(.-)$")
   if cmd == "" or cmd == "show" or cmd == "toggle" then
     if ns.UI then ns.UI.Toggle() end
+  elseif cmd == "prof" then
+    ns.CycleActive(); ns.Print("Showing " .. ns.ProfName()); ns.Refresh(0)
   elseif cmd == "options" or cmd == "opt" then
     if ns.UI then ns.UI.ShowOptions() end
   elseif cmd == "resale" and (rest == "none" or rest == "vendor" or rest == "ah") then
@@ -420,6 +509,6 @@ SlashCmdList.BESTSKILLUP = function(msg)
   elseif cmd == "reset" then
     DB.point = nil; if ns.UI then ns.UI.ResetPosition() end
   else
-    ns.Print("/bsu  opt  partner [name]  sync  auctionator  resale none/vendor/ah  unlearned  source <type>  wh  price <id> [c]  debug  reset")
+    ns.Print("/bsu  prof  opt  partner [name]  sync  auctionator  resale none/vendor/ah  unlearned  source <type>  wh  price <id> [c]  debug  reset")
   end
 end

@@ -1,12 +1,14 @@
 ## Interface: 16001
 ## Title: BestSkillUp
-## Notes: Cheapest Blacksmithing skill-ups (Auctionator prices)
-## Version: 0.5.0
+## Notes: Cheapest Blacksmithing and Cooking skill-ups (Auctionator prices)
+## Version: 0.6.0
 ## OptionalDeps: Auctionator, EllesmereUI, EllesmereUIBlizzardSkin
 ## SavedVariables: BestSkillUpDB
 ## SavedVariablesPerCharacter: BestSkillUpCharDB
 
+Data.lua
 Data_Blacksmithing.lua
+Data_Cooking.lua
 Core.lua
 UI.lua
 Native.lua

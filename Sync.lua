@@ -1,4 +1,4 @@
--- Shares Auctionator prices for Blacksmithing items between your characters over hidden addon whispers.
+-- Shares Auctionator prices for the items BestSkillUp uses (all professions) between your characters over hidden addon whispers.
 -- The side with the newer Auctionator scan sends; the other stores them in BestSkillUpDB.shared.
 local _, ns = ...
 local D = ns.Data
