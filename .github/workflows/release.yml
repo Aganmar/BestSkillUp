@@ -1,0 +1,58 @@
+# Builds a WowUp-compatible release when a version tag (v1.2.3) is pushed:
+#   BestSkillUp-<tag>-forever.zip  (BestSkillUp/ folder at the zip root, add-on files only)
+#   release.json                   (BigWigs packager format, flavor "forever")
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check TOC version matches tag
+        run: |
+          toc=$(grep -m1 '^## Version:' BestSkillUp.toc | sed 's/^## Version:[[:space:]]*//' | tr -d '\r')
+          if [ "v$toc" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match TOC version $toc"; exit 1
+          fi
+
+      - name: Build zip and release.json
+        run: |
+          V="$GITHUB_REF_NAME"
+          Z="BestSkillUp-$V-forever.zip"
+          IFACE=$(grep -m1 '^## Interface:' BestSkillUp.toc | sed 's/^## Interface:[[:space:]]*//' | cut -d, -f1 | tr -d ' \r')
+          # Add-on files = the TOC plus every file it loads (dev files such as Tools/ stay out).
+          files=$(grep -v '^#' BestSkillUp.toc | tr -d '\r' | sed '/^[[:space:]]*$/d')
+          git archive --format=zip --prefix=BestSkillUp/ -o "$Z" HEAD BestSkillUp.toc $files
+          cat > release.json <<EOF
+          {
+            "releases": [
+              {
+                "name": "BestSkillUp",
+                "version": "$V",
+                "filename": "$Z",
+                "nolib": false,
+                "metadata": [
+                  { "flavor": "forever", "interface": $IFACE }
+                ]
+              }
+            ]
+          }
+          EOF
+          python3 -m json.tool release.json
+          unzip -l "$Z"
+          echo "ZIP=$Z" >> "$GITHUB_ENV"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$ZIP" release.json \
+            --title "BestSkillUp $GITHUB_REF_NAME" --generate-notes

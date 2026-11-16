@@ -1,8 +1,13 @@
 # BestSkillUp — hand-off
 
-WoW: Forever add-on that ranks profession recipes by **expected gold per skill point**, using Auctionator prices. Blacksmithing only so far. Version 0.5.0, Interface 16001. Not in git and not published anywhere; the installed folder is the only copy (plus this hand-off).
+WoW: Forever add-on that ranks profession recipes by **expected gold per skill point**, using Auctionator prices. Blacksmithing only so far. Version 0.5.0, Interface 16001.
 
-Install path: `C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns\BestSkillUp`
+- Source (git repo): `C:\Users\User\BestSkillUp`, pushed to the private GitHub repo https://github.com/Aganmar/BestSkillUp
+- Install path (managed by WowUp from the GitHub releases): `C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns\BestSkillUp`
+
+## Releasing
+
+Bump `## Version:` in `BestSkillUp.toc`, commit, then tag and push: `git tag v0.5.1 && git push origin main v0.5.1`. The `Release` workflow (`.github/workflows/release.yml`) checks the tag matches the TOC version, builds `BestSkillUp-<tag>-forever.zip` (the TOC and the files it loads, under a `BestSkillUp/` folder) plus a `release.json` (flavor `forever`), and publishes the GitHub release that WowUp installs from.
 
 ## How it works
 
@@ -63,4 +68,3 @@ The inputs were Wowhead (WoW Forever) exports: `g_listviews.recipes` (colors, re
 1. **Ranking skew (undecided).** With resale on, profitable crafts with a low skill-up chance can outrank reliable ones, because a negative net cost divided by a small chance looks great. Suggested fix: a "profit credit %" setting (count only part of the resale value) plus a "cost per craft" column, so cheap-but-unlikely recipes are visible for what they are.
 2. **Overlap with ScanShare.** ScanShare (github.com/Aganmar/ScanShare) now writes shared prices straight into Auctionator, which BestSkillUp already reads. `Sync.lua` and `Tools/SyncAuctionator.ps1` are probably redundant and could be removed.
 3. **Other professions.** Everything except the data file and the profession check is generic; the check uses skillLine 164 (Blacksmithing) and Mining 186 for smelting. Adding a profession means generating its data file and generalising those checks.
-4. **No version control.** Consider putting it in a git repository before further changes.
