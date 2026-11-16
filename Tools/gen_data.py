@@ -38,6 +38,8 @@ VENDOR_NAMES = {
     "Skin of Dwarven Stout", "Holiday Spices", "Holiday Spirits",
     # First Aid
     "Flagon of Dwarven Honeymead", "Thunder Ale", "Bottle of Dalaran Noir",
+    # Enchanting
+    "Copper Rod", "Maple Seed", "Stranglethorn Seed", "Red-speckled Mushroom",
 }
 
 def group(src):
@@ -62,7 +64,10 @@ def lua_str(s):
 def recipe_line(r):
     o, y, g, gr = thresholds(r)
     reag = ",".join(f"{i},{q}" for i, q in r[8])
-    return f"[{r[0]}]={{{lua_str(r[1])},{r[2] or 0},{r[3]},{r[4]},{o},{y},{g},{gr},\"{group(r[9])}\",{{{reag}}}}},"
+    # Wowhead gives some recipes that make an item a count of 0 (oils, wands, kits): they make one.
+    lo, hi = r[3], r[4]
+    if r[2] and not lo: lo = hi = 1
+    return f"[{r[0]}]={{{lua_str(r[1])},{r[2] or 0},{lo},{hi},{o},{y},{g},{gr},\"{group(r[9])}\",{{{reag}}}}},"
 
 # Recipes that can never give a point (grey at 0, e.g. unfinished entries) are left out.
 recipes = [r for r in D["professions"][prof]["recipes"] if r[5][3] > 0]
