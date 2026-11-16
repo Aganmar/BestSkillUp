@@ -18,6 +18,7 @@ local DEFAULTS = {
   includeUnlearned = true,    -- also suggest recipes you haven't learned yet
   sources = { trainer = true, vendor = true, drop = false, quest = false, other = true },
   overrides = {},             -- [itemID] = copper
+  disenchant = nil,           -- count disenchant value of what you make: nil = if this character has Enchanting, or true/false
   point = nil,                -- saved window position
   shown = true,
 }
@@ -291,15 +292,80 @@ function ns.IsBoP(id)
   return bind == 1
 end
 
+-- ---------------------------------------------------------------- disenchant value
+-- Is disenchant value counted? Set by /bsu de, else on for characters with Enchanting.
+function ns.UseDisenchant()
+  if DB.disenchant ~= nil then return DB.disenchant end
+  return CDB ~= nil and CDB.profs[333] ~= nil and CDB.profs[333].skill ~= nil
+end
+
+local function matValue(id)
+  local p = ns.AHPrice(id)
+  if not p and DB.useWH and D.items[id] and D.items[id][4] > 0 then p = D.items[id][4] end
+  if not p then return 0 end
+  return p * (1 - DB.ahCut / 100) * (DB.ahSellThrough / 100)
+end
+
+local deWaiting = {}   -- items whose level/type we've asked the game for
+local function itemBasics(id)
+  local _, quality, ilvl, classID
+  if C_Item and C_Item.GetItemInfo then
+    local r = { C_Item.GetItemInfo(id) }
+    quality, ilvl, classID = r[3], r[4], r[12]
+  elseif GetItemInfo then
+    local r = { GetItemInfo(id) }
+    quality, ilvl, classID = r[3], r[4], r[12]
+  end
+  if not ilvl and C_Item and C_Item.RequestLoadItemDataByID then
+    deWaiting[id] = true
+    pcall(C_Item.RequestLoadItemDataByID, id)
+  end
+  return quality, ilvl, classID
+end
+function ns.OnItemInfo(id) if deWaiting[id] then deWaiting[id] = nil; return true end end
+
+-- Expected AH value (after cut and sell-through) of disenchanting one of this item; 0 if it can't be.
+function ns.DisenchantValue(id)
+  if not id or id == 0 then return 0 end
+  local quality, ilvl, classID = itemBasics(id)
+  if not ilvl or (classID ~= 2 and classID ~= 4) or not quality or quality < 2 or quality > 4 then return 0 end
+  local row
+  for _, t in ipairs(D.disenchant) do if ilvl >= t[1] and ilvl <= t[2] then row = t; break end end
+  if not row then return 0 end
+  local function avg(a, b) return (a + b) / 2 end
+  if quality == 2 then
+    local weapon = classID == 2
+    local shard = row[9] and 0.05 or 0
+    local main = 0.75 + (row[9] and 0 or 0.05)
+    local dustP, essP = weapon and 0.20 or main, weapon and main or 0.20
+    local v = dustP * avg(row[4], row[5]) * matValue(row[3]) + essP * avg(row[7], row[8]) * matValue(row[6])
+    if row[9] then v = v + shard * matValue(row[9]) end
+    return v
+  end
+  local shardID = row[9] or 10978
+  if quality == 3 then
+    if row[10] then return 0.995 * matValue(shardID) + 0.005 * matValue(D.NEXUS_CRYSTAL) end
+    return matValue(shardID)
+  end
+  if ilvl <= 55 then return 3 * matValue(shardID) end
+  return matValue(D.NEXUS_CRYSTAL)
+end
+
 function ns.ResaleValue(id, mode)
   mode = mode or DB.resale
   if not id or id == 0 or mode == "none" then return 0, "" end
+  if mode == "de" then return ns.DisenchantValue(id), "disenchant" end
+  local de = ns.UseDisenchant() and mode ~= "ahonly" and ns.DisenchantValue(id) or 0
   local vend = ns.SellPrice(id)
-  if mode == "vendor" or ns.IsBoP(id) then return vend, "vendor" end
+  if mode == "vendor" or ns.IsBoP(id) then
+    if de > vend then return de, "disenchant" end
+    return vend, "vendor"
+  end
   local ah, src = ns.AHPrice(id), "AH"
   if not ah and DB.useWH and D.items[id] and D.items[id][4] > 0 then ah, src = D.items[id][4], "WH avg" end
   local net = ah and ah * (1 - DB.ahCut / 100) * (DB.ahSellThrough / 100) or 0
   if mode == "ahonly" then return net, ah and src or "none" end
+  if de > net and de > vend then return de, "disenchant" end
   if net > vend then return net, src end
   return vend, "vendor"
 end
@@ -511,6 +577,10 @@ SlashCmdList.BESTSKILLUP = function(msg)
     DB.includeUnlearned = not DB.includeUnlearned; ns.Print("Unlearned " .. (DB.includeUnlearned and "on" or "off")); ns.Refresh(0)
   elseif cmd == "source" and DB.sources[rest] ~= nil then
     DB.sources[rest] = not DB.sources[rest]; ns.Print(rest .. " " .. (DB.sources[rest] and "on" or "off")); ns.Refresh(0)
+  elseif cmd == "de" then
+    if rest == "auto" then DB.disenchant = nil else DB.disenchant = not ns.UseDisenchant() end
+    ns.Print("Disenchant value " .. (ns.UseDisenchant() and "on" or "off") .. (DB.disenchant == nil and " (auto: on with Enchanting)" or ""))
+    ns.Refresh(0)
   elseif cmd == "wh" then
     DB.useWH = not DB.useWH; ns.Print("WH prices " .. (DB.useWH and "on" or "off")); ns.Refresh(0)
   elseif cmd == "price" then
@@ -526,6 +596,6 @@ SlashCmdList.BESTSKILLUP = function(msg)
   elseif cmd == "reset" then
     DB.point = nil; if ns.UI then ns.UI.ResetPosition() end
   else
-    ns.Print("/bsu  prof  opt  resale none/vendor/ah  unlearned  source <type>  wh  price <id> [c]  debug  reset")
+    ns.Print("/bsu  prof  opt  resale none/vendor/ah  unlearned  source <type>  de [auto]  wh  price <id> [c]  debug  reset")
   end
 end

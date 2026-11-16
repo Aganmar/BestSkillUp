@@ -1,6 +1,6 @@
 # BestSkillUp — hand-off
 
-WoW: Forever add-on that ranks profession recipes by **expected gold per skill point**, using Auctionator prices. Blacksmithing, Mining (smelting), Enchanting, Cooking and First Aid. Version 0.9.1, Interface 16001. Licensed GPL v3 (`LICENSE`, shipped in the release zip).
+WoW: Forever add-on that ranks profession recipes by **expected gold per skill point**, using Auctionator prices. Blacksmithing, Mining (smelting), Enchanting, Cooking and First Aid. Version 0.10.0, Interface 16001. Licensed GPL v3 (`LICENSE`, shipped in the release zip).
 
 - Source (git repo): `C:\Users\User\BestSkillUp`, pushed to the private GitHub repo https://github.com/Aganmar/BestSkillUp
 - Install path (managed by WowUp from the GitHub releases): `C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns\BestSkillUp`
@@ -19,6 +19,7 @@ chance (Classic rule)   = orange 100%, grey 0%, yellow/green = (grey − skill) 
 - **Prices**: AH prices come only from Auctionator. Sharing prices between characters is left to a separate add-on that writes into Auctionator (BestSkillUp's own sync, `Sync.lua` and `Tools/SyncAuctionator.ps1`, was removed in 0.7.0).
 - **Reagent cost** (`ns.UnitCost`, recursive, memoised, depth ≤ 5): cheapest of manual override → vendor → Auctionator AH → crafting/smelting it from its own reagents → Wowhead average price (fallback, toggle `useWH`).
 - **Value of what you make** (`ns.ResaleValue`): `none` / `vendor` (vendor sell price) / `ah` (AH price × (1 − AH cut) × sell-through, or vendor if higher). BoP items always use vendor value.
+- **Disenchant value** (`ns.DisenchantValue`): expected AH value (after cut and sell-through) of disenchanting an uncommon/rare/epic weapon or armour piece, from `D.disenchant` in `Data.lua` (Classic tables by item level; item level, quality and class come from `GetItemInfo`, requested and refreshed when not cached). `ns.ResaleValue` takes it when it beats vendor/AH, if `ns.UseDisenchant()` (`DB.disenchant`, default: the character has Enchanting). BoP items can still be disenchanted, so they get it too. Shown in the crafting window as `Cost Per Point (Disenchant)`.
 - **Live colour override** (`ns.Chance`): at your current skill, the game's own recipe difficulty wins if it disagrees with the data.
 - **Professions**: each `Data_<Profession>.lua` registers itself with `ns.AddProfessionData` (`Data.lua`). The list shows the *active* profession: the one whose window you last opened (`ns.SetActive`), switchable by clicking the list's title or `/bsu prof`. Reagent crafting (`ns.UnitCost`) looks across every profession's recipes; Mining's smelts count as "smelt" (the `reagents.smelt` option, your Mining skill) rather than "craft".
 - **Ranking** (`ns.Evaluate(skill, skillLine)`, both default to the active profession): every usable recipe with chance > 0, sorted by cost per point, then chance, then ID. Recipes with an unpriced reagent sort last. Recipes you know always count; the source and "unlearned" filters only apply to recipes you don't know.
@@ -39,12 +40,12 @@ chance (Classic rule)   = orange 100%, grey 0%, yellow/green = (grey − skill) 
 
 ## Settings (`BestSkillUpDB`)
 
-`resale` (none/vendor/ah, default vendor), `ahCut` 5, `ahSellThrough` 60, `useWH` true, `reagents` {vendor, ah, craft, smelt}, `includeUnlearned` true, `sources` {trainer, vendor, other on; drop, quest off}, `overrides` [itemID] = copper, `point`, `shown`. (`shared`, `partner`, `pushAuctionator` belonged to the price sync removed in 0.7.0 and are cleared on load.)
+`resale` (none/vendor/ah, default vendor), `ahCut` 5, `ahSellThrough` 60, `useWH` true, `reagents` {vendor, ah, craft, smelt}, `includeUnlearned` true, `sources` {trainer, vendor, other on; drop, quest off}, `overrides` [itemID] = copper, `disenchant` (nil = auto), `point`, `shown`. (`shared`, `partner`, `pushAuctionator` belonged to the price sync removed in 0.7.0 and are cleared on load.)
 Per character (`BestSkillUpCharDB`): `profs[skillLine] = { known, scanned, skill, maxSkill }`, `active` (last profession opened), `mining`. Saved data from 0.5.0 (top-level `known`/`skill`/…) is moved into `profs[164]` on load.
 
 ## Slash commands
 
-`/bsu` toggle · `prof` (next profession) · `opt` · `resale none/vendor/ah` · `unlearned` · `source <type>` · `wh` · `price <itemID> [copper]` (blank clears) · `debug` (Native.lua state) · `reset` (window position)
+`/bsu` toggle · `prof` (next profession) · `opt` · `resale none/vendor/ah` · `unlearned` · `source <type>` · `de [auto]` · `wh` · `price <itemID> [copper]` (blank clears) · `debug` (Native.lua state) · `reset` (window position)
 
 ## Data generation
 

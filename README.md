@@ -11,6 +11,7 @@ Open your profession window and the ranked list appears beside it, with the best
 - **Cost per skill point** – every recipe is ranked by what a point really costs you, counting the chance that a yellow or green recipe gives no point at all.
 - **Cheapest reagents** – each reagent is priced the cheapest way you can get it: vendor, Auction House, or crafting or smelting it yourself (bars are priced from ore when your Mining skill can smelt them).
 - **Resale value** – optionally counts what you get back for the item you make (vendor price, or AH price after the cut and a sell-through rate).
+- **Disenchant value** – for enchanters, a green, blue or purple item you make is also valued by what it disenchants into at your Auctionator prices, whenever that beats selling it.
 - **In the crafting window** – under each recipe: your skill-up chance, the orange/yellow/green/grey thresholds, and the cost per point with vendor and AH resale.
 - **Follows your profession** – the list switches to whichever profession window you open; click its title (or `/bsu prof`) to switch by hand.
 - **Live recipe colours** – at your current skill, the game's own recipe colour wins if it disagrees with the data.
@@ -38,6 +39,7 @@ Auctionator is optional but recommended: without it, BestSkillUp falls back to v
 | `/bsu resale none\|vendor\|ah` | How to value what you make |
 | `/bsu unlearned` | Also suggest recipes you haven't learned |
 | `/bsu source trainer\|vendor\|drop\|quest\|other` | Include or exclude recipes by where they're learned |
+| `/bsu de [auto]` | Count disenchant value of what you make on/off (auto: on for characters with Enchanting) |
 | `/bsu wh` | Use Wowhead average prices when Auctionator has none |
 | `/bsu price <itemID> [copper]` | Set your own price for an item (blank clears it) |
 | `/bsu debug` | Show what the crafting-window lines are doing |

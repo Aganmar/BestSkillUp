@@ -216,7 +216,8 @@ local function buildOptions()
   for i, it in ipairs({ { "Ignore", "none" }, { "Vendor", "vendor" }, { "AH or vendor", "ah" } }) do
     check(opts, it[1], cols[i], y, function() return DB().resale == it[2] end, function() DB().resale = it[2] end)
   end
-  y = y - 26
+  check(opts, "Disenchant", cols[1], y - 20, function() return ns.UseDisenchant() end, function(v) DB().disenchant = v end)
+  y = y - 46
   numBox(opts, "AH cut %", 4, y, "ahCut")
   numBox(opts, "Sell-through %", 112, y, "ahSellThrough")
 end
