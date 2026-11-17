@@ -4,7 +4,7 @@
 
 Find the **cheapest way to level your professions** in **World of Warcraft: Forever**. BestSkillUp ranks every recipe you can make by its expected gold cost per skill point, using your [Auctionator](https://www.curseforge.com/wow/addons/auctionator) prices.
 
-Open your profession window and the ranked list appears beside it, with the best recipe to craft right now at the top. Supports **Blacksmithing**, **Mining** (smelting), **Enchanting**, **Cooking** and **First Aid**.
+Open your profession window and the ranked list appears beside it, with the best recipe to craft right now at the top. Supports **Blacksmithing**, **Leatherworking**, **Mining** (smelting), **Enchanting**, **Cooking** and **First Aid**.
 
 ## Features
 

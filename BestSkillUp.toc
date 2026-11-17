@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: BestSkillUp
-## Notes: Cheapest Blacksmithing, Mining, Enchanting, Cooking and First Aid skill-ups (Auctionator prices)
+## Notes: Cheapest Blacksmithing, Leatherworking, Mining, Enchanting, Cooking and First Aid skill-ups (Auctionator prices)
 ## Version: 0.12.0
 ## X-License: GPL-3.0
 ## IconTexture: Interface\AddOns\BestSkillUp\Media\BestSkillUp
@@ -14,6 +14,7 @@ Data_Mining.lua
 Data_Enchanting.lua
 Data_Cooking.lua
 Data_FirstAid.lua
+Data_Leatherworking.lua
 Core.lua
 UI.lua
 Native.lua
