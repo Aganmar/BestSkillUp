@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: BestSkillUp
 ## Notes: Cheapest Blacksmithing, Leatherworking, Mining, Enchanting, Cooking and First Aid skill-ups (Auctionator prices)
-## Version: 0.13.0
+## Version: 0.13.1
 ## X-License: GPL-3.0
 ## IconTexture: Interface\AddOns\BestSkillUp\Media\BestSkillUp
 ## OptionalDeps: Auctionator, EllesmereUI, EllesmereUIBlizzardSkin
