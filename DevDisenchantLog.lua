@@ -2,9 +2,11 @@
 -- Loaded from the local AddOns copy; the release workflow leaves every Dev*.lua file (and its TOC line) out of the zip.
 local _, ns = ...
 
--- Records every Disenchant: the item (found as the bag item the cast locks), what dropped, and whether
--- the Arcane Salvager switch was on, to measure the Salvager's bonus against the disenchant tables.
+-- Records every Disenchant: the item (found as the bag item the cast locks), what dropped, and whether the
+-- player had Boosted Disenchanting (spell 1283701, from time near an Arcane Salvager: "chance of bonus
+-- disenchanting output is increased"), to measure the bonus against the disenchant tables.
 local DE_LOG_MAX = 3000
+local BOOST_ID, BOOST_NAME = 1283701, "Boosted Disenchanting"
 local pendingDE
 
 local function bagItemLocked()
@@ -21,17 +23,29 @@ local function bagItemLocked()
   end
 end
 
+-- Buff names and spell IDs, and whether Boosted Disenchanting is one of them.
 local function playerAuras()
-  local names = {}
+  local names, ids, boost = {}, {}, false
   for i = 1, 40 do
-    local name
+    local name, id
     if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
-      local a = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL"); name = a and a.name
-    elseif UnitBuff then name = UnitBuff("player", i) end
+      local a = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL"); name, id = a and a.name, a and a.spellId
+    elseif UnitBuff then local r = { UnitBuff("player", i) }; name, id = r[1], r[10] end
     if not name then break end
-    names[#names + 1] = name
+    names[#names + 1] = name; ids[#ids + 1] = id or 0
+    if id == BOOST_ID or name == BOOST_NAME then boost = true end
   end
-  return names
+  if not boost and C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
+    boost = C_UnitAuras.GetPlayerAuraBySpellID(BOOST_ID) ~= nil
+  end
+  return names, ids, boost
+end
+
+-- Records made before the buff was detected only have buff names: go by those (the old manual switch is ignored).
+local function boosted(e)
+  if e.boost ~= nil then return e.boost end
+  for _, n in ipairs(e.auras or {}) do if n == BOOST_NAME then return true end end
+  return false
 end
 
 local function itemFromLink(link)
@@ -66,9 +80,10 @@ local function onDisenchantLoot()
   pendingDE = nil
   ns.DB.deLog = ns.DB.deLog or {}
   local log = ns.DB.deLog
-  log[#log + 1] = { t = time(), id = p.id, ilvl = p.ilvl, q = p.q, c = p.c, sal = p.sal, skill = p.skill, loot = loot, auras = p.auras }
+  log[#log + 1] = { t = time(), id = p.id, ilvl = p.ilvl, q = p.q, c = p.c, boost = p.boost, skill = p.skill, loot = loot,
+    auras = p.auras, auraIDs = p.auraIDs }
   while #log > DE_LOG_MAX do table.remove(log, 1) end
-  ns.Print(("Disenchant #%d recorded (%s Salvager): %s"):format(#log, p.sal and "with" or "without", table.concat(parts, ", ")))
+  ns.Print(("Disenchant #%d recorded (%s): %s"):format(#log, p.boost and "Boosted" or "not boosted", table.concat(parts, ", ")))
 end
 
 local deFrame = CreateFrame("Frame")
@@ -78,8 +93,9 @@ deFrame:SetScript("OnEvent", function(_, ev, unit, castGUID, spellID)
     local link = bagItemLocked()
     if not link then pendingDE = nil; return end
     local id, ilvl, q, c = itemFromLink(link)
-    pendingDE = { cast = castGUID, started = GetTime(), id = id, ilvl = ilvl, q = q, c = c, sal = ns.DB.salvager and true or false,
-      skill = ns.CDB and ns.CDB.profs[333] and ns.CDB.profs[333].skill, auras = playerAuras() }
+    local names, auraIDs, boost = playerAuras()
+    pendingDE = { cast = castGUID, started = GetTime(), id = id, ilvl = ilvl, q = q, c = c, boost = boost,
+      skill = ns.CDB and ns.CDB.profs[333] and ns.CDB.profs[333].skill, auras = names, auraIDs = auraIDs }
   elseif ev == "UNIT_SPELLCAST_INTERRUPTED" or ev == "UNIT_SPELLCAST_FAILED" or ev == "UNIT_SPELLCAST_FAILED_QUIET" then
     if unit == "player" and pendingDE and pendingDE.cast == castGUID then pendingDE = nil end
   elseif ev == "LOOT_READY" or ev == "LOOT_OPENED" then
@@ -89,58 +105,64 @@ end)
 for _, ev in ipairs({ "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_FAILED_QUIET",
   "LOOT_READY", "LOOT_OPENED" }) do pcall(deFrame.RegisterEvent, deFrame, ev) end
 
--- Recorded results against the tables, with and without the Salvager.
+-- Recorded results against the tables, with and without Boosted Disenchanting.
+--   materials: row materials received / the row's expected amount (chance x average quantity)
+--   2+ kinds:  disenchants that gave more than one of the row's materials (normally you get one)
+--   over max:  disenchants where a material's quantity was above the row's maximum
 function ns.SalvagerReport()
-  local S = { [false] = { n = 0, got = 0, exp = 0, gotV = 0, expV = 0, up = 0, odd = 0 }, [true] = { n = 0, got = 0, exp = 0, gotV = 0, expV = 0, up = 0, odd = 0 } }
+  local function new() return { n = 0, got = 0, exp = 0, gotV = 0, expV = 0, up = 0, odd = 0, multi = 0, over = 0 } end
+  local S = { [false] = new(), [true] = new() }
   local function price(id) return ns.AHPrice(id) or (ns.Data.items[id] and ns.Data.items[id][4]) or 0 end
   for _, e in ipairs(ns.DB.deLog or {}) do
     local row, rows, i
     if e.ilvl and e.q then row, rows, i = deRow(e.q, e.ilvl, e.c) end
     if row then
-      local s = S[e.sal and true or false]
+      local s = S[boosted(e)]
       s.n = s.n + 1
-      local inRow, inNext = {}, {}
+      local inRow, hi, inNext = {}, {}, {}
       for k = 3, #row do
-        local m = row[k]; inRow[m[4]] = true
+        local m = row[k]; inRow[m[4]] = true; hi[m[4]] = m[3]
         local q = m[1] / 100 * (m[2] + m[3]) / 2
         s.exp = s.exp + q; s.expV = s.expV + q * price(m[4])
       end
       local nextRow = rows[i + 1]
       if nextRow then for k = 3, #nextRow do inNext[nextRow[k][4]] = true end end
-      local up, odd = false, false
+      local up, odd, kinds, over = false, false, 0, false
       for id, qty in pairs(e.loot) do
         s.gotV = s.gotV + qty * price(id)
-        if inRow[id] then s.got = s.got + qty
+        if inRow[id] then
+          s.got = s.got + qty; kinds = kinds + 1
+          if qty > hi[id] then over = true end
         elseif inNext[id] then up = true
         else odd = true end
       end
       if up then s.up = s.up + 1 end
       if odd then s.odd = s.odd + 1 end
+      if kinds > 1 then s.multi = s.multi + 1 end
+      if over then s.over = s.over + 1 end
     end
   end
-  ns.Print(("Arcane Salvager switch: %s. %d disenchants recorded."):format(ns.DB.salvager and "ON" or "off", #(ns.DB.deLog or {})))
-  for _, sal in ipairs({ false, true }) do
-    local s = S[sal]
-    local label = sal and "With Salvager" or "Without Salvager"
+  local function pct(x, n) return math.floor(100 * x / n + 0.5) end
+  ns.Print(("%d disenchants recorded."):format(#(ns.DB.deLog or {})))
+  for _, b in ipairs({ false, true }) do
+    local s = S[b]
+    local label = b and "Boosted" or "Not boosted"
     if s.n == 0 then ns.Print(label .. ": none yet")
     else
-      ns.Print(("%s: %d · materials %.2fx expected · value %.2fx · higher bracket %d (%d%%)%s"):format(label, s.n,
-        s.exp > 0 and s.got / s.exp or 0, s.expV > 0 and s.gotV / s.expV or 0, s.up, math.floor(100 * s.up / s.n + 0.5),
-        s.odd > 0 and (" · other " .. s.odd) or ""))
+      ns.Print(("%s: %d · materials %.2fx expected (%.2f per DE) · value %.2fx · 2+ kinds %d%% · over max %d%% · higher bracket %d%%%s"):format(
+        label, s.n, s.exp > 0 and s.got / s.exp or 0, s.got / s.n, s.expV > 0 and s.gotV / s.expV or 0,
+        pct(s.multi, s.n), pct(s.over, s.n), pct(s.up, s.n), s.odd > 0 and (" · other " .. s.odd) or ""))
     end
   end
   return S
 end
 
--- /bsu salvager [on|off|clear]: switch, clear, or report. Core calls this before its own commands.
+-- /bsu salvager [clear]: report, or clear the records. Core calls this before its own commands.
 function ns.DevSlash(cmd, rest)
   if cmd ~= "salvager" and cmd ~= "salv" then return false end
   if not ns.DB then return true end
-  if rest == "on" or rest == "off" then
-    ns.DB.salvager = (rest == "on")
-    ns.Print("Arcane Salvager switch " .. (ns.DB.salvager and "ON: disenchants are recorded as with the Salvager" or "off"))
-    if ns.UI and ns.UI.SyncOptions then ns.UI.SyncOptions() end
-  elseif rest == "clear" then
+  ns.DB.salvager = nil   -- old manual switch: Boosted Disenchanting is detected now
+  if rest == "clear" then
     ns.DB.deLog = {}; ns.Print("Disenchant records cleared")
   else
     ns.SalvagerReport()
