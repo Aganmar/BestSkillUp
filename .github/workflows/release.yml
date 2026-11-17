@@ -35,7 +35,7 @@ jobs:
           Z="BestSkillUp-$V-forever.zip"
           IFACE=$(grep -m1 '^## Interface:' BestSkillUp.toc | sed 's/^## Interface:[[:space:]]*//' | cut -d, -f1 | tr -d ' \r')
           # Add-on files = the TOC, every file it loads, the in-game icon and the licence (dev files such as Tools/ stay out).
-          # Dev*.lua files are for testing in the local AddOns copy only: left out of the zip and of its TOC.
+          # Dev*.lua files are for local testing only: left out of the zip and of its TOC (the Dev/ add-ons are never in the TOC).
           files=$(grep -v '^#' BestSkillUp.toc | tr -d '\r' | sed '/^[[:space:]]*$/d' | grep -v '^Dev')
           mkdir -p build
           git archive --format=tar --prefix=BestSkillUp/ HEAD $files Media/BestSkillUp.tga LICENSE | tar -x -C build

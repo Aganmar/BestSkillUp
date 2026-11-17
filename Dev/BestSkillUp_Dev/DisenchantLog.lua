@@ -1,6 +1,8 @@
--- Development only: disenchant recording for measuring the Arcane Salvager.
--- Loaded from the local AddOns copy; the release workflow leaves every Dev*.lua file (and its TOC line) out of the zip.
-local _, ns = ...
+-- BestSkillUp_Dev: disenchant recording for measuring the Arcane Salvager. Development only, never released.
+-- A separate add-on so that WowUp updating BestSkillUp doesn't remove it. Works on BestSkillUp's namespace
+-- (BestSkillUpAPI) and saves into BestSkillUpDB.deLog.
+local ns = BestSkillUpAPI
+if not ns then return end
 
 -- Records every Disenchant: the item (found as the bag item the cast locks), what dropped, and whether the
 -- player had Boosted Disenchanting (spell 1283701, from time near an Arcane Salvager: "chance of bonus
@@ -192,7 +194,7 @@ deFrame:SetScript("OnEvent", function(_, ev, a1, a2, a3, a4)
       if next(p.loot) then commit("chat")
       else
         pendingDE = nil
-        ns.Print("|cffff8040Disenchant seen but no loot was caught, so it wasn't recorded.|r Type /bsu salvager debug and tell Claude what it prints.")
+        ns.Print("|cffff8040Disenchant seen but no loot was caught, so it wasn't recorded.|r Type /bsu salvager debug and try again.")
       end
     end)
   elseif ev == "UNIT_SPELLCAST_INTERRUPTED" or ev == "UNIT_SPELLCAST_FAILED" or ev == "UNIT_SPELLCAST_FAILED_QUIET" then

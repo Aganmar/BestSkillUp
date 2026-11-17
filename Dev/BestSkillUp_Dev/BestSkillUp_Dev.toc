@@ -1,0 +1,9 @@
+## Interface: 16001
+## Title: BestSkillUp Dev
+## Notes: Development only: records disenchants to measure the Arcane Salvager (/bsu salvager)
+## Author: Aganmar
+## Version: 1
+## Dependencies: BestSkillUp
+## IconTexture: Interface\AddOns\BestSkillUp\Media\BestSkillUp
+
+DisenchantLog.lua

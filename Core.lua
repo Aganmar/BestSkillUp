@@ -8,6 +8,7 @@ local ADDON, ns = ...
 local CALLER = "BestSkillUp"
 local D = ns.Data
 ns.CALLER = CALLER
+BestSkillUpAPI = ns   -- for companion add-ons (the dev-only BestSkillUp_Dev disenchant recorder)
 
 local DEFAULTS = {
   resale = "vendor",          -- "none" | "vendor" | "ah"

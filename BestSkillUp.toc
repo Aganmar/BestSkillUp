@@ -18,4 +18,3 @@ Data_Leatherworking.lua
 Core.lua
 UI.lua
 Native.lua
-DevDisenchantLog.lua
