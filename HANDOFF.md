@@ -1,6 +1,6 @@
 # BestSkillUp — hand-off
 
-WoW: Forever add-on that ranks profession recipes by **expected gold per skill point**, using Auctionator prices. Blacksmithing, Leatherworking, Mining (smelting), Enchanting, Cooking and First Aid. Version 0.12.0, Interface 16001. Licensed GPL v3 (`LICENSE`, shipped in the release zip).
+WoW: Forever add-on that ranks profession recipes by **expected gold per skill point**, using Auctionator prices. Blacksmithing, Leatherworking, Mining (smelting), Enchanting, Cooking and First Aid. Version 0.13.0, Interface 16001. Licensed GPL v3 (`LICENSE`, shipped in the release zip).
 
 - Source (git repo): `C:\Users\User\BestSkillUp`, pushed to the private GitHub repo https://github.com/Aganmar/BestSkillUp
 - Install path (managed by WowUp from the GitHub releases): `C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns\BestSkillUp`
