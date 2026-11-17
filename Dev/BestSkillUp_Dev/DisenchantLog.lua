@@ -119,28 +119,65 @@ if hooksecurefunc then
   if C_Container and C_Container.PickupContainerItem then pcall(hooksecurefunc, C_Container, "PickupContainerItem", onUse) end
 end
 
+-- Bag contents when the cast starts; the disenchanted item is the armour/weapon that's gone afterwards.
+-- This works however the item was picked (bag add-ons, macros), which the other checks can miss.
+local function bagSnapshot()
+  local snap, C = {}, C_Container
+  if not (C and C.GetContainerNumSlots) then return snap end
+  for bag = 0, (NUM_BAG_SLOTS or 4) do
+    for slot = 1, C.GetContainerNumSlots(bag) or 0 do
+      local info = C.GetContainerItemInfo(bag, slot)
+      if type(info) == "table" and info.hyperlink then snap[bag * 1000 + slot] = { info.hyperlink, info.stackCount or 1 } end
+    end
+  end
+  return snap
+end
+local function vanishedItem(snap)
+  local C = C_Container
+  for key, was in pairs(snap) do
+    local info = C.GetContainerItemInfo(math.floor(key / 1000), key % 1000)
+    local gone = type(info) ~= "table" or info.hyperlink ~= was[1] or (info.stackCount or 1) < was[2]
+    if gone then
+      local _, _, _, c = itemFromLink(was[1])
+      if c == 2 or c == 4 then return was[1] end   -- weapon or armour
+    end
+  end
+end
+
 local function startPending(castGUID, how, link)
   local id, ilvl, q, c
   if link then id, ilvl, q, c = itemFromLink(link) end
   local names, auraIDs, boost = playerAuras()
   pendingDE = { cast = castGUID, started = GetTime(), id = id, ilvl = ilvl, q = q, c = c, boost = boost, link = link,
-    skill = ns.CDB and ns.CDB.profs[333] and ns.CDB.profs[333].skill, auras = names, auraIDs = auraIDs, loot = {}, parts = {} }
+    skill = ns.CDB and ns.CDB.profs[333] and ns.CDB.profs[333].skill, auras = names, auraIDs = auraIDs, loot = {}, parts = {}, snap = bagSnapshot() }
   dbg(("cast seen (%s): %s, %s"):format(how, link or "item unknown", boost and "Boosted" or "not boosted"))
 end
 
 local lastCast   -- castGUID of the last recorded disenchant (its SUCCEEDED can arrive after the loot)
-local function commit(source)
-  local p = pendingDE
-  if not p or not next(p.loot) then return end
-  pendingDE = nil
-  lastCast = p.cast
+local function finish(p, source)
   ns.DB.deLog = ns.DB.deLog or {}
   local log = ns.DB.deLog
   log[#log + 1] = { t = time(), id = p.id, ilvl = p.ilvl, q = p.q, c = p.c, boost = p.boost, skill = p.skill, loot = p.loot,
     auras = p.auras, auraIDs = p.auraIDs, via = source }
   while #log > DE_LOG_MAX do table.remove(log, 1) end
   ns.Print(("Disenchant #%d recorded (%s): %s%s"):format(#log, p.boost and "Boosted" or "not boosted", table.concat(p.parts, ", "),
-    p.id and "" or " |cffff8040(item unknown: kept, but left out of the report)|r"))
+    p.id and "" or " |cffff8040(item unknown)|r"))
+end
+
+local function commit(source)
+  local p = pendingDE
+  if not p or not next(p.loot) then return end
+  pendingDE = nil
+  lastCast = p.cast
+  if p.id or not p.snap then finish(p, source); return end
+  C_Timer.After(0.6, function()   -- the item leaves the bags just after the loot appears
+    local link = vanishedItem(p.snap)
+    if link then
+      p.link = link; p.id, p.ilvl, p.q, p.c = itemFromLink(link)
+      dbg("item from bag change: " .. link)
+    end
+    finish(p, source)
+  end)
 end
 
 local function fromLootWindow()
@@ -254,6 +291,20 @@ function ns.SalvagerReport()
       if over then s.over = s.over + 1 end
     end
   end
+  -- Records without the item: compare each material with the most any disenchant table gives of it.
+  local maxQty = {}
+  for _, rows in pairs(ns.Data.disenchant) do
+    for _, row in ipairs(rows) do
+      for k = 3, #row do local m = row[k]; maxQty[m[4]] = math.max(maxQty[m[4]] or 0, m[3]) end
+    end
+  end
+  local U = { [false] = { n = 0, over = 0 }, [true] = { n = 0, over = 0 } }
+  for _, e in ipairs(ns.DB.deLog or {}) do
+    if not (e.ilvl and e.q) then
+      local u = U[boosted(e)]; u.n = u.n + 1
+      for id, qty in pairs(e.loot or {}) do if maxQty[id] and qty > maxQty[id] then u.over = u.over + 1; break end end
+    end
+  end
   local function pct(x, n) return math.floor(100 * x / n + 0.5) end
   ns.Print(("%d disenchants recorded."):format(#(ns.DB.deLog or {})))
   for _, b in ipairs({ false, true }) do
@@ -266,6 +317,13 @@ function ns.SalvagerReport()
         pct(s.multi, s.n), pct(s.over, s.n), pct(s.up, s.n), s.odd > 0 and (" · other " .. s.odd) or ""))
     end
   end
+  for _, b in ipairs({ false, true }) do
+    local u = U[b]
+    if u.n > 0 then
+      ns.Print(("%s, item unknown: %d · above any table's maximum %d (%d%%)"):format(b and "Boosted" or "Not boosted", u.n, u.over, pct(u.over, u.n)))
+    end
+  end
+  S.unknown = U
   return S
 end
 
