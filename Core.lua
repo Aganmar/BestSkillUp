@@ -689,6 +689,6 @@ SlashCmdList.BESTSKILLUP = function(msg)
   elseif cmd == "reset" then
     DB.point = nil; if ns.UI then ns.UI.ResetPosition() end
   else
-    ns.Print("/bsu  prof  opt  resale none/vendor/ah  unlearned  source <type>  de [auto]  overtime <0-5>  " .. (ns.DevSlash and "salvager [clear]  " or "") .. "wh  price <id> [c]  debug  reset")
+    ns.Print("/bsu  prof  opt  resale none/vendor/ah  unlearned  source <type>  de [auto]  overtime <0-5>  " .. (ns.DevSlash and "salvager [clear|debug]  " or "") .. "wh  price <id> [c]  debug  reset")
   end
 end

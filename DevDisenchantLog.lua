@@ -63,47 +63,150 @@ local function deRow(q, ilvl, cls)
   for i, row in ipairs(rows) do if ilvl >= row[1] and ilvl <= row[2] then return row, rows, i end end
 end
 
-local function onDisenchantLoot()
+-- Several ways to catch a disenchant, because the client may not do what Classic did:
+--   cast:  UNIT_SPELLCAST_START/SENT/SUCCEEDED with Disenchant's spell ID, or any spell named "Disenchant"
+--   item:  the bag item the cast locks; else the bag item last clicked while a spell was targeting;
+--          else the bag item named as the cast's target (UNIT_SPELLCAST_SENT)
+--   loot:  the loot window (LOOT_READY/LOOT_OPENED); else "You receive loot" chat lines in the next few seconds
+-- `/bsu salvager debug` prints each step. A cast that can't be recorded always says so in chat.
+local function dbg(msg) if ns.DB and ns.DB.deDebug then ns.Print("|cff888888[de]|r " .. msg) end end
+
+local DE_NAME
+local function spellName(id)
+  if C_Spell and C_Spell.GetSpellName then return C_Spell.GetSpellName(id) end
+  if GetSpellInfo then return (GetSpellInfo(id)) end
+end
+local function isDisenchant(id)
+  if not id then return false end
+  if id == ns.DISENCHANT then return true end
+  DE_NAME = DE_NAME or spellName(ns.DISENCHANT) or "Disenchant"
+  local n = spellName(id)
+  return n ~= nil and (n == DE_NAME or n == "Disenchant")
+end
+
+local function bagItemByName(name)
+  if not name or name == "" then return end
+  local C = C_Container
+  for bag = 0, (NUM_BAG_SLOTS or 4) do
+    local n = (C and C.GetContainerNumSlots and C.GetContainerNumSlots(bag)) or 0
+    for slot = 1, n do
+      local info = C.GetContainerItemInfo(bag, slot)
+      local link = type(info) == "table" and info.hyperlink
+      if link and link:find("[" .. name .. "]", 1, true) then return link end
+    end
+  end
+end
+
+-- Bag item clicked while a spell is waiting for a target (how Disenchant is aimed).
+local targeted
+local function onUse(bag, slot)
+  if not (SpellIsTargeting and SpellIsTargeting()) then return end
+  local info = C_Container and C_Container.GetContainerItemInfo and C_Container.GetContainerItemInfo(bag, slot)
+  local link = type(info) == "table" and info.hyperlink
+  if link then targeted = { link = link, t = GetTime() }; dbg("targeted " .. link) end
+end
+if hooksecurefunc then
+  if C_Container and C_Container.UseContainerItem then pcall(hooksecurefunc, C_Container, "UseContainerItem", onUse) end
+  if C_Container and C_Container.PickupContainerItem then pcall(hooksecurefunc, C_Container, "PickupContainerItem", onUse) end
+end
+
+local function startPending(castGUID, how, link)
+  local id, ilvl, q, c
+  if link then id, ilvl, q, c = itemFromLink(link) end
+  local names, auraIDs, boost = playerAuras()
+  pendingDE = { cast = castGUID, started = GetTime(), id = id, ilvl = ilvl, q = q, c = c, boost = boost, link = link,
+    skill = ns.CDB and ns.CDB.profs[333] and ns.CDB.profs[333].skill, auras = names, auraIDs = auraIDs, loot = {}, parts = {} }
+  dbg(("cast seen (%s): %s, %s"):format(how, link or "item unknown", boost and "Boosted" or "not boosted"))
+end
+
+local lastCast   -- castGUID of the last recorded disenchant (its SUCCEEDED can arrive after the loot)
+local function commit(source)
   local p = pendingDE
-  if not p or GetTime() - p.started > 15 then pendingDE = nil; return end
-  local loot, parts = {}, {}
-  for i = 1, (GetNumLootItems and GetNumLootItems() or 0) do
+  if not p or not next(p.loot) then return end
+  pendingDE = nil
+  lastCast = p.cast
+  ns.DB.deLog = ns.DB.deLog or {}
+  local log = ns.DB.deLog
+  log[#log + 1] = { t = time(), id = p.id, ilvl = p.ilvl, q = p.q, c = p.c, boost = p.boost, skill = p.skill, loot = p.loot,
+    auras = p.auras, auraIDs = p.auraIDs, via = source }
+  while #log > DE_LOG_MAX do table.remove(log, 1) end
+  ns.Print(("Disenchant #%d recorded (%s): %s%s"):format(#log, p.boost and "Boosted" or "not boosted", table.concat(p.parts, ", "),
+    p.id and "" or " |cffff8040(item unknown: kept, but left out of the report)|r"))
+end
+
+local function fromLootWindow()
+  local p = pendingDE
+  local n = GetNumLootItems and GetNumLootItems() or 0
+  dbg("loot window: " .. n .. " slot(s)")
+  for i = 1, n do
     local link = GetLootSlotLink and GetLootSlotLink(i)
     local id = link and tonumber(link:match("item:(%d+)"))
     if id then
       local _, name, qty = GetLootSlotInfo(i)
-      loot[id] = (loot[id] or 0) + (qty or 1)
-      parts[#parts + 1] = (qty or 1) .. " " .. (name or ns.ItemName(id))
+      p.loot[id] = (p.loot[id] or 0) + (qty or 1)
+      p.parts[#p.parts + 1] = (qty or 1) .. " " .. (name or ns.ItemName(id))
     end
   end
-  if not next(loot) then return end   -- not the disenchant loot (yet)
-  pendingDE = nil
-  ns.DB.deLog = ns.DB.deLog or {}
-  local log = ns.DB.deLog
-  log[#log + 1] = { t = time(), id = p.id, ilvl = p.ilvl, q = p.q, c = p.c, boost = p.boost, skill = p.skill, loot = loot,
-    auras = p.auras, auraIDs = p.auraIDs }
-  while #log > DE_LOG_MAX do table.remove(log, 1) end
-  ns.Print(("Disenchant #%d recorded (%s): %s"):format(#log, p.boost and "Boosted" or "not boosted", table.concat(parts, ", ")))
+  if next(p.loot) then commit("loot") end
+end
+
+local function fromChat(msg)
+  local p = pendingDE
+  if not p or not p.succeeded or GetTime() - p.succeeded > 5 then return end
+  local link = msg:match("|c%x+|Hitem:.-|h.-|h|r") or msg:match("|Hitem:.-|h.-|h")
+  local id = link and tonumber(link:match("item:(%d+)"))
+  if not id then return end
+  local qty = tonumber(msg:match("|h|r?x(%d+)") or msg:match("x(%d+)%.?%s*$")) or 1
+  p.loot[id] = (p.loot[id] or 0) + qty
+  p.parts[#p.parts + 1] = qty .. " " .. ns.ItemName(id)
+  p.viaChat = true
+  dbg("chat loot: " .. qty .. " x " .. id)
 end
 
 local deFrame = CreateFrame("Frame")
-deFrame:SetScript("OnEvent", function(_, ev, unit, castGUID, spellID)
-  if ev == "UNIT_SPELLCAST_START" then
-    if unit ~= "player" or spellID ~= ns.DISENCHANT then return end
-    local link = bagItemLocked()
-    if not link then pendingDE = nil; return end
-    local id, ilvl, q, c = itemFromLink(link)
-    local names, auraIDs, boost = playerAuras()
-    pendingDE = { cast = castGUID, started = GetTime(), id = id, ilvl = ilvl, q = q, c = c, boost = boost,
-      skill = ns.CDB and ns.CDB.profs[333] and ns.CDB.profs[333].skill, auras = names, auraIDs = auraIDs }
+deFrame:SetScript("OnEvent", function(_, ev, a1, a2, a3, a4)
+  if ev == "UNIT_SPELLCAST_SENT" then              -- unit, target name, castGUID, spellID
+    if a1 ~= "player" or not isDisenchant(a4) then return end
+    local link = bagItemLocked() or (targeted and GetTime() - targeted.t < 10 and targeted.link) or bagItemByName(a2)
+    startPending(a3, "sent", link)
+  elseif ev == "UNIT_SPELLCAST_START" then         -- unit, castGUID, spellID
+    if a1 ~= "player" or not isDisenchant(a3) then return end
+    local link = bagItemLocked() or (targeted and GetTime() - targeted.t < 10 and targeted.link)
+    if pendingDE and pendingDE.cast == a2 then
+      if not pendingDE.link and link then
+        pendingDE.link = link; pendingDE.id, pendingDE.ilvl, pendingDE.q, pendingDE.c = itemFromLink(link)
+        dbg("item found at start: " .. link)
+      end
+    else
+      startPending(a2, "start", link)
+    end
+  elseif ev == "UNIT_SPELLCAST_SUCCEEDED" then
+    if a1 ~= "player" or not isDisenchant(a3) then return end
+    if a2 ~= nil and a2 == lastCast then return end   -- already recorded from the loot window
+    if not pendingDE then startPending(a2, "succeeded", targeted and GetTime() - targeted.t < 10 and targeted.link) end
+    pendingDE.succeeded = GetTime()
+    dbg("cast succeeded")
+    local p = pendingDE
+    C_Timer.After(4, function()
+      if pendingDE ~= p then return end
+      if next(p.loot) then commit("chat")
+      else
+        pendingDE = nil
+        ns.Print("|cffff8040Disenchant seen but no loot was caught, so it wasn't recorded.|r Type /bsu salvager debug and tell Claude what it prints.")
+      end
+    end)
   elseif ev == "UNIT_SPELLCAST_INTERRUPTED" or ev == "UNIT_SPELLCAST_FAILED" or ev == "UNIT_SPELLCAST_FAILED_QUIET" then
-    if unit == "player" and pendingDE and pendingDE.cast == castGUID then pendingDE = nil end
+    if a1 == "player" and pendingDE and pendingDE.cast == a2 then pendingDE = nil; dbg("cast " .. ev:sub(16):lower()) end
   elseif ev == "LOOT_READY" or ev == "LOOT_OPENED" then
-    if pendingDE then onDisenchantLoot() end
+    if pendingDE then fromLootWindow() end
+  elseif ev == "CHAT_MSG_LOOT" then
+    if pendingDE then fromChat(a1 or "") end
   end
 end)
-for _, ev in ipairs({ "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_FAILED_QUIET",
-  "LOOT_READY", "LOOT_OPENED" }) do pcall(deFrame.RegisterEvent, deFrame, ev) end
+for _, ev in ipairs({ "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_SUCCEEDED", "UNIT_SPELLCAST_INTERRUPTED",
+  "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_FAILED_QUIET", "LOOT_READY", "LOOT_OPENED", "CHAT_MSG_LOOT" }) do
+  pcall(deFrame.RegisterEvent, deFrame, ev)
+end
 
 -- Recorded results against the tables, with and without Boosted Disenchanting.
 --   materials: row materials received / the row's expected amount (chance x average quantity)
@@ -157,12 +260,15 @@ function ns.SalvagerReport()
   return S
 end
 
--- /bsu salvager [clear]: report, or clear the records. Core calls this before its own commands.
+-- /bsu salvager [clear|debug]: report, clear the records, or toggle step-by-step output. Core calls this before its own commands.
 function ns.DevSlash(cmd, rest)
   if cmd ~= "salvager" and cmd ~= "salv" then return false end
   if not ns.DB then return true end
   ns.DB.salvager = nil   -- old manual switch: Boosted Disenchanting is detected now
-  if rest == "clear" then
+  if rest == "debug" then
+    ns.DB.deDebug = not ns.DB.deDebug
+    ns.Print("Disenchant recorder debug " .. (ns.DB.deDebug and "on" or "off")); return true
+  elseif rest == "clear" then
     ns.DB.deLog = {}; ns.Print("Disenchant records cleared")
   else
     ns.SalvagerReport()
