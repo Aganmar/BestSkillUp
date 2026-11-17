@@ -2,7 +2,14 @@
 -- A separate add-on so that WowUp updating BestSkillUp doesn't remove it. Works on BestSkillUp's namespace
 -- (BestSkillUpAPI) and saves into BestSkillUpDB.deLog.
 local ns = BestSkillUpAPI
-if not ns then return end
+if not ns then
+  -- BestSkillUp older than the version that exposes BestSkillUpAPI (e.g. a release installed over the local copy).
+  local f = CreateFrame("Frame"); f:RegisterEvent("PLAYER_LOGIN")
+  f:SetScript("OnEvent", function()
+    DEFAULT_CHAT_FRAME:AddMessage("|cffe8c35aBestSkillUp Dev|r: |cffff8040not recording disenchants|r - this BestSkillUp is too old for the recorder (needs BestSkillUpAPI).")
+  end)
+  return
+end
 
 -- Records every Disenchant: the item (found as the bag item the cast locks), what dropped, and whether the
 -- player had Boosted Disenchanting (spell 1283701, from time near an Arcane Salvager: "chance of bonus
