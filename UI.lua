@@ -6,7 +6,7 @@ local ROWS, ROW_H, W = 16, 16, 340
 local TOP = 32
 local COLOURS = { orange = "|cffff8040", yellow = "|cffffff00", green = "|cff40c040", grey = "|cff808080" }
 local frame, rows, summary, optBtn, opts, unlearnedCB
-local overtimeText
+local overtimeText, chefText
 local list, offset, listFor = {}, 0, nil   -- the ranked list, the first row shown, and which profession it is for
 local scrollTrack, scrollThumb
 local checks = {}
@@ -71,6 +71,9 @@ local function showRecipeTooltip(row)
   costTip:AddLine(("|cffff8040%d|r |cffffff00%d|r |cff40c040%d|r |cff808080%d|r"):format(o, y, g, gr))
   if ns.OvertimeRank() > 0 and x.p > 0 and x.p < 1 then
     costTip:AddLine(("Includes Working Overtime %d/5 (%d%% fewer misses)"):format(ns.OvertimeRank(), ns.OvertimeBonus() * 100 + 0.5), 0.6, 0.6, 0.6)
+  end
+  if x.r.cook and ns.ChefRank() > 0 then
+    costTip:AddLine(("Includes Master Chef %d/5 (%.2f made per craft)"):format(ns.ChefRank(), x.c.made), 0.6, 0.6, 0.6)
   end
   if x.r.corrected then
     local b = x.r.base
@@ -310,29 +313,35 @@ local function buildOptions()
   numBox(opts, "Sell-through %", 112, y, "ahSellThrough")
   y = y - 30
 
-  -- Working Overtime rank (this character): - n/5 +
-  local lbl = opts:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  lbl:SetPoint("TOPLEFT", 4, y - 3); lbl:SetText("Working Overtime")
-  local function stepper(text, x, delta)
-    local b = CreateFrame("Button", nil, opts, "UIPanelButtonTemplate")
-    b:SetSize(20, 18); b:SetPoint("TOPLEFT", x, y); b:SetText(text)
-    b:SetScript("OnClick", function()
-      ns.CDB.overtime = math.max(0, math.min(5, ns.OvertimeRank() + delta))
-      UI.SyncOptions(); ns.Refresh(0)
-    end)
-    return b
+  -- Legacy talent ranks (this character): - n/5 +
+  local function rankRow(label, key, rankFn)
+    local lbl = opts:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    lbl:SetPoint("TOPLEFT", 4, y - 3); lbl:SetText(label)
+    local function stepper(text, x, delta)
+      local b = CreateFrame("Button", nil, opts, "UIPanelButtonTemplate")
+      b:SetSize(20, 18); b:SetPoint("TOPLEFT", x, y); b:SetText(text)
+      b:SetScript("OnClick", function()
+        ns.CDB[key] = math.max(0, math.min(5, rankFn() + delta))
+        UI.SyncOptions(); ns.Refresh(0)
+      end)
+    end
+    stepper("-", 112, -1)
+    local txt = opts:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    txt:SetPoint("TOPLEFT", 136, y - 3)
+    stepper("+", 166, 1)
+    local note = opts:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    note:SetPoint("TOPLEFT", 192, y - 3); note:SetText("Legacy talent")
+    y = y - 22
+    return txt
   end
-  stepper("-", 112, -1)
-  overtimeText = opts:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  overtimeText:SetPoint("TOPLEFT", 136, y - 3)
-  stepper("+", 166, 1)
-  local note = opts:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  note:SetPoint("TOPLEFT", 192, y - 3); note:SetText("Legacy talent")
+  overtimeText = rankRow("Working Overtime", "overtime", ns.OvertimeRank)
+  chefText = rankRow("Master Chef", "chef", ns.ChefRank)
 end
 
 function UI.SyncOptions()
   for _, cb in ipairs(checks) do cb:SetChecked(cb.get() and true or false) end
   if overtimeText then overtimeText:SetText(("%d/5"):format(ns.OvertimeRank())) end
+  if chefText then chefText:SetText(("%d/5"):format(ns.ChefRank())) end
   if unlearnedCB then unlearnedCB:SetChecked(DB().includeUnlearned) end
 end
 

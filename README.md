@@ -16,6 +16,7 @@ Open your profession window and the ranked list appears beside it, with the best
 - **Follows your profession** – the list switches to whichever profession window you open; click its title (or `/bsu prof`) to switch by hand.
 - **Live recipe colours** – at your current skill, the game's own recipe colour wins if it disagrees with the data.
 - **Working Overtime** – set your rank of the Legacy talent (Options, or `/bsu overtime 0-5`) and the chance of a yellow/green craft giving no point drops by 4% per rank (at 5/5, 80% becomes 84% and 10% becomes 28%).
+- **Master Chef** – set your rank of the Legacy talent (Options, or `/bsu chef 0-5`) and cooking counts 10% more food per craft per rank (each rank is a 10% chance of an extra result), so the food you make pays back more.
 - **Learns the real thresholds** – every time you open a profession window, the colours the game shows are remembered (for all your characters) and used to correct Wowhead's orange/yellow/green/grey levels where WoW: Forever differs. The tooltip says when a recipe has been corrected.
 - **Knows what you've learned** – recipes you know always appear; choose whether to also suggest unlearned recipes, and from which sources (trainer, vendor, drop, quest).
 - **Disenchanting** – below Enchanting 60, Disenchant sits at the top of the Enchanting list at no cost, with its skill-up chance (estimated from Classic: always up to 20, falling to nothing at 60).
@@ -44,6 +45,7 @@ Auctionator is optional but recommended: without it, BestSkillUp falls back to v
 | `/bsu source trainer\|vendor\|drop\|quest\|other` | Include or exclude recipes by where they're learned |
 | `/bsu de [auto]` | Count disenchant value of what you make on/off (auto: on for characters with Enchanting) |
 | `/bsu overtime <0-5>` | Your Working Overtime rank (Legacy talent), for this character |
+| `/bsu chef <0-5>` | Your Master Chef rank (Legacy talent), for this character |
 | `/bsu wh` | Use Wowhead average prices when Auctionator has none |
 | `/bsu price <itemID> [copper]` | Set your own price for an item (blank clears it) |
 | `/bsu debug` | Show what the crafting-window lines are doing |

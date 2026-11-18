@@ -25,7 +25,7 @@ local DEFAULTS = {
   shown = true,
 }
 -- profs[skillLine] = { known = { [spellID] = true }, scanned, skill, maxSkill }; active = last profession opened
-local CHAR_DEFAULTS = { profs = {}, mining = nil, active = nil, overtime = 0 }   -- overtime: Working Overtime rank (Legacy talent)
+local CHAR_DEFAULTS = { profs = {}, mining = nil, active = nil, overtime = 0, chef = 0 }   -- Legacy talent ranks: Working Overtime, Master Chef
 
 local DB, CDB
 ns.live = { diff = {}, craftable = {}, at = nil, line = nil }   -- live data from the open Professions window
@@ -132,7 +132,15 @@ end
 -- ---------------------------------------------------------------- recipe maths
 -- recipe = { name, out, minMade, maxMade, orange, yellow, green, grey, source, reagents }
 function ns.Thresholds(r) return r[5], r[6], r[7], r[8] end
-function ns.Made(r) return (r[3] + r[4]) / 2 end
+-- Average made per craft. Cooking includes Master Chef (Legacy talent, per character): "Your cooking recipes
+-- have a 10% chance to create an extra result" (the 0/5 tooltip, i.e. rank 1), taken as 10% per rank.
+function ns.ChefRank() return CDB and math.max(0, math.min(5, tonumber(CDB.chef) or 0)) or 0 end
+function ns.ChefBonus() return 0.10 * ns.ChefRank() end
+function ns.Made(r)
+  local m = (r[3] + r[4]) / 2
+  if r.cook then m = m * (1 + ns.ChefBonus()) end
+  return m
+end
 
 function ns.Colour(r, s)
   local _, y, g, gr = r[5], r[6], r[7], r[8]
@@ -670,6 +678,11 @@ SlashCmdList.BESTSKILLUP = function(msg)
     if rest == "auto" then DB.disenchant = nil else DB.disenchant = not ns.UseDisenchant() end
     ns.Print("Disenchant value " .. (ns.UseDisenchant() and "on" or "off") .. (DB.disenchant == nil and " (auto: on with Enchanting)" or ""))
     ns.Refresh(0)
+  elseif cmd == "chef" then
+    local n = tonumber(rest)
+    if n then CDB.chef = math.max(0, math.min(5, math.floor(n))) end
+    ns.Print(("Master Chef %d/5 (cooking makes %d%% extra on average)"):format(ns.ChefRank(), ns.ChefBonus() * 100 + 0.5))
+    ns.Refresh(0)
   elseif cmd == "overtime" or cmd == "ot" then
     local n = tonumber(rest)
     if n then CDB.overtime = math.max(0, math.min(5, math.floor(n))) end
@@ -690,6 +703,6 @@ SlashCmdList.BESTSKILLUP = function(msg)
   elseif cmd == "reset" then
     DB.point = nil; if ns.UI then ns.UI.ResetPosition() end
   else
-    ns.Print("/bsu  prof  opt  resale none/vendor/ah  unlearned  source <type>  de [auto]  overtime <0-5>  " .. (ns.DevSlash and "salvager [clear|debug]  " or "") .. "wh  price <id> [c]  debug  reset")
+    ns.Print("/bsu  prof  opt  resale none/vendor/ah  unlearned  source <type>  de [auto]  overtime <0-5>  chef <0-5>  " .. (ns.DevSlash and "salvager [clear|debug]  " or "") .. "wh  price <id> [c]  debug  reset")
   end
 end

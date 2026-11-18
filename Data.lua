@@ -62,6 +62,7 @@ D.disenchant = {
 
 function ns.AddProfessionData(t)
   D.professions[t.skillLine] = { name = t.profession, skillLine = t.skillLine, recipes = t.recipes or {} }
+  if t.skillLine == 185 then for _, r in pairs(t.recipes or {}) do r.cook = true end end   -- Master Chef applies
   D.order[#D.order + 1] = t.skillLine
   for id, it in pairs(t.items or {}) do D.items[id] = D.items[id] or it end
   for id, p in pairs(t.vendor or {}) do D.vendor[id] = D.vendor[id] or p end
