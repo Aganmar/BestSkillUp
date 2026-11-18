@@ -75,6 +75,8 @@ local function showRecipeTooltip(row)
   if ns.OvertimeRank() > 0 and x.p > 0 and x.p < 1 then
     costTip:AddLine(("Includes Working Overtime %d/5 (%d%% fewer misses)"):format(ns.OvertimeRank(), ns.OvertimeBonus() * 100 + 0.5), 0.6, 0.6, 0.6)
   end
+  local spec = not x.known and ns.SpecNeeded(x.id)
+  if spec then costTip:AddLine("Needs " .. (ns.Data.specNames[spec] or spec) .. " (you haven't specialised yet)", 1, 0.82, 0) end
   if x.r.cook and ns.ChefRank() > 0 then
     costTip:AddLine(("Includes Master Chef %d/5 (%.2f made per craft)"):format(ns.ChefRank(), x.c.made), 0.6, 0.6, 0.6)
   end
@@ -107,6 +109,8 @@ local function showListTooltip(row)
   costTip:AddDoubleLine("Learn at", tostring(o), 0.6, 0.6, 0.6, 1, 1, 1)
   costTip:AddLine(("|cffff8040%d|r |cffffff00%d|r |cff40c040%d|r |cff808080%d|r"):format(o, y, g, gr))
   costTip:AddDoubleLine("Source", x.r[9], 0.6, 0.6, 0.6, 1, 1, 1)
+  local spec = ns.SpecNeeded(x.id)
+  if spec then costTip:AddDoubleLine("Needs", ns.Data.specNames[spec] or tostring(spec), 0.6, 0.6, 0.6, 1, 1, 1) end
   if x.owned == true then costTip:AddLine("Learned", 0.25, 0.75, 0.25)
   elseif x.owned == false then costTip:AddLine("Not learned", 1, 0.4, 0.4)
   else costTip:AddLine("Open the profession window to see which you know", 0.6, 0.6, 0.6) end
@@ -123,7 +127,7 @@ local function recipeList()
   local filter = Filter()
   local out, owned, total = {}, 0, 0
   for id, r in pairs(P and P.recipes or {}) do
-    if not r.pinned then
+    if not r.pinned and (prof.known[id] or not ns.SpecBlocked(id)) then
       local known = prof.known[id] and true or false
       total = total + 1
       if known then owned = owned + 1 end

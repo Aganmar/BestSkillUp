@@ -478,6 +478,22 @@ function ns.IsKnown(id, line)
   return ns.Prof(line or l).known[id] == true
 end
 
+-- Specialization plans you can't get: you've learned a rival specialization (Armorsmith vs Weaponsmith, one
+-- leatherworking school), or it's a Weaponsmith master plan and you're an Armorsmith or another master.
+-- With no specialization yet nothing is ruled out: you could still pick either.
+local RIVALS = { [9787] = { 9788 }, [9788] = { 9787 }, [17039] = { 9788, 17040, 17041 }, [17040] = { 9788, 17039, 17041 },
+  [17041] = { 9788, 17039, 17040 }, [10656] = { 10658, 10660 }, [10658] = { 10656, 10660 }, [10660] = { 10656, 10658 } }
+local function hasSpell(id) return IsPlayerSpell and IsPlayerSpell(id) or false end
+function ns.SpecNeeded(id) return D.specOf and D.specOf[id] end
+function ns.SpecBlocked(id)
+  local need = D.specOf and D.specOf[id]
+  if not need or hasSpell(need) then return false end
+  for _, rival in ipairs(RIVALS[need] or {}) do
+    if hasSpell(rival) then return true, rival end
+  end
+  return false
+end
+
 -- Recipes you know always count (the data's learn level can be wrong); the source and
 -- "unlearned" filters only decide which recipes you don't know yet are suggested.
 local function usable(id, r, s, P)
@@ -485,6 +501,7 @@ local function usable(id, r, s, P)
   if not DB.sources[r[9]] then return false end
   if s < r[5] then return false end
   if P.scanned and not DB.includeUnlearned then return false end
+  if ns.SpecBlocked(id) then return false end
   return true
 end
 ns.Usable = usable

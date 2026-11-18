@@ -69,3 +69,26 @@ function ns.AddProfessionData(t)
   for id, r in pairs(t.mining or {}) do D.mining[id] = r end
   if t.miningSkillLine then D.miningSkillLine = t.miningSkillLine end
 end
+
+-- Specialization plans (Wowhead's "specialization" field, WoW: Forever, 2026-11-19): spell the recipe needs.
+-- Blacksmithing: Weaponsmith 9787 / Armorsmith 9788, and the Weaponsmith masters Swordsmith 17039,
+-- Hammersmith 17040, Axesmith 17041. Leatherworking: Dragonscale 10656 / Elemental 10658 / Tribal 10660.
+D.specNames = { [9787] = "Weaponsmith", [9788] = "Armorsmith", [17039] = "Master Swordsmith", [17040] = "Master Hammersmith",
+  [17041] = "Master Axesmith", [10656] = "Dragonscale Leatherworking", [10658] = "Elemental Leatherworking",
+  [10660] = "Tribal Leatherworking" }
+D.specOf = {}
+for spell, ids in pairs({
+  [9787] = { 23638, 23639, 16995, 15294, 15292, 10015, 10011, 10007, 10003 },
+  [9788] = { 24399, 23637, 23636, 20876, 16745, 16742, 16744, 20873, 16729, 16741, 27829, 16724, 20874, 20872, 16660,
+    16655, 15296, 16667, 9974, 9954 },
+  [17039] = { 16990, 20890, 16992, 27832, 23652, 16985, 16978 },
+  [17040] = { 16988, 16993, 27830, 23650, 16983, 16973 },
+  [17041] = { 16994, 20897, 16991, 23653, 16970 },
+  [10656] = { 20855, 22926, 23708, 24654, 19107, 19054, 24655, 19094, 19089, 19085, 19077, 10650, 19060, 19050, 10619 },
+  [10658] = { 23710, 20854, 22928, 16746, 16661, 19095, 26279, 19101, 19090, 19078, 19079, 19076, 19067, 19061, 19059,
+    10632, 10630 },
+  [10660] = { 23709, 22927, 16728, 20853, 19097, 19104, 19087, 16650, 19081, 19084, 19086, 19074, 19080, 19073, 19063,
+    19066, 19068, 19062, 19053, 10647, 10621 },
+}) do
+  for _, id in ipairs(ids) do D.specOf[id] = spell end
+end
