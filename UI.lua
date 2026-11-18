@@ -3,9 +3,10 @@ local UI = {}
 ns.UI = UI
 
 local ROWS, ROW_H, W = 16, 16, 340
-local TOP = 32
+local TOP = 54                   -- title row + tab row
 local COLOURS = { orange = "|cffff8040", yellow = "|cffffff00", green = "|cff40c040", grey = "|cff808080" }
 local frame, rows, summary, optBtn, opts, unlearnedCB
+local tabs, filterBtns = {}, {}  -- "Skill-ups" / "Recipes" tabs, and the Recipes view's All / Owned / Missing
 local overtimeText, chefText
 local list, offset, listFor = {}, 0, nil   -- the ranked list, the first row shown, and which profession it is for
 local scrollTrack, scrollThumb
@@ -16,6 +17,8 @@ local function skinFont(fs) skinFonts[#skinFonts + 1] = fs; if skin then skin.Fo
 local openedBySlash, dismissed, showOpts = false, false, false
 
 local function DB() return ns.DB end
+local function View() return DB().view == "recipes" and "recipes" or "skill" end
+local function Filter() local f = DB().recipeFilter; return (f == "owned" or f == "missing") and f or "all" end
 
 -- ---------------------------------------------------------------- list
 local itemTip, costTip
@@ -85,6 +88,60 @@ local function showRecipeTooltip(row)
   UI.hovered = row
 end
 
+-- Recipes view: what it makes, when you can learn it, its colours and where it comes from.
+local function showListTooltip(row)
+  local x = row.x
+  itemTip = itemTip or tip("BestSkillUpItemTip", true)
+  costTip = costTip or tip("BestSkillUpCostTip")
+  itemTip:SetOwner(frame, "ANCHOR_NONE")
+  itemTip:ClearAllPoints()
+  itemTip:SetPoint("TOPLEFT", frame, "TOPRIGHT", 2, 0)
+  local out = x.r[2]
+  if out and out > 0 then itemTip:SetHyperlink("item:" .. out) else itemTip:SetHyperlink("spell:" .. x.id) end
+  itemTip:Show()
+  costTip:SetOwner(frame, "ANCHOR_NONE")
+  costTip:ClearAllPoints()
+  costTip:SetPoint("TOPLEFT", itemTip, "BOTTOMLEFT", 0, -2)
+  costTip:AddLine(x.r[1], 1, 1, 1)
+  local o, y, g, gr = ns.Thresholds(x.r)
+  costTip:AddDoubleLine("Learn at", tostring(o), 0.6, 0.6, 0.6, 1, 1, 1)
+  costTip:AddLine(("|cffff8040%d|r |cffffff00%d|r |cff40c040%d|r |cff808080%d|r"):format(o, y, g, gr))
+  costTip:AddDoubleLine("Source", x.r[9], 0.6, 0.6, 0.6, 1, 1, 1)
+  if x.owned == true then costTip:AddLine("Learned", 0.25, 0.75, 0.25)
+  elseif x.owned == false then costTip:AddLine("Not learned", 1, 0.4, 0.4)
+  else costTip:AddLine("Open the profession window to see which you know", 0.6, 0.6, 0.6) end
+  costTip:AddLine("Shift-click: Wowhead link", 0.5, 0.5, 0.5)
+  costTip:Show()
+  UI.hovered = row
+end
+
+-- Every recipe of the shown profession, by the skill it's learned at.
+local function recipeList()
+  local P = ns.Data.professions[ns.active]
+  local prof = ns.Prof()
+  local scanned = prof.scanned
+  local filter = Filter()
+  local out, owned, total = {}, 0, 0
+  for id, r in pairs(P and P.recipes or {}) do
+    if not r.pinned then
+      local known = prof.known[id] and true or false
+      total = total + 1
+      if known then owned = owned + 1 end
+      local keep = filter == "all" or not scanned or (filter == "owned") == known
+      if keep then
+        local owned            -- true / false, or nil when the profession hasn't been scanned yet
+        if scanned then owned = known elseif known then owned = true end
+        out[#out + 1] = { id = id, r = r, owned = owned }
+      end
+    end
+  end
+  table.sort(out, function(a, b)
+    if a.r[5] ~= b.r[5] then return a.r[5] < b.r[5] end
+    return a.r[1] < b.r[1]
+  end)
+  return out, owned, total, scanned
+end
+
 local function hideTooltips()
   UI.hovered = nil
   if itemTip then itemTip:Hide() end
@@ -96,7 +153,9 @@ local loader = CreateFrame("Frame")
 loader:RegisterEvent("GET_ITEM_INFO_RECEIVED")
 loader:SetScript("OnEvent", function(_, _, id)
   local row = UI.hovered
-  if row and row.x and row.x.r[2] == id and row:IsMouseOver() then showRecipeTooltip(row) end
+  if row and row.x and row.x.r[2] == id and row:IsMouseOver() then
+    if row.x.listView then showListTooltip(row) else showRecipeTooltip(row) end
+  end
 end)
 
 local function makeRow(i)
@@ -111,7 +170,10 @@ local function makeRow(i)
   b.right = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   b.right:SetPoint("RIGHT", -2, 0); b.right:SetJustifyH("RIGHT")
   skinFont(b.left); skinFont(b.mid); skinFont(b.right)
-  b:SetScript("OnEnter", function(self) if self.x then showRecipeTooltip(self) end end)
+  b:SetScript("OnEnter", function(self)
+    if not self.x then return end
+    if self.x.listView then showListTooltip(self) else showRecipeTooltip(self) end
+  end)
   b:SetScript("OnLeave", hideTooltips)
   b:SetScript("OnClick", function(self)
     if not self.x then return end
@@ -143,9 +205,33 @@ local function scrollTo(o)
   renderRows()
 end
 
+local listInfo = {}
 function renderRows()
   local scanned = ns.Prof().scanned
   local n = #list
+  if View() == "recipes" and not showOpts then
+    local range = n > ROWS and ("%d-%d of %d"):format(offset + 1, math.min(offset + ROWS, n), n) or tostring(n)
+    summary:SetText(listInfo.scanned and ("%s · you know %d of %d"):format(range, listInfo.owned, listInfo.total)
+      or (range .. " recipes · open the profession to see which you know"))
+    local skill = ns.Prof().skill
+    for i = 1, ROWS do
+      local x, b = list[offset + i], rows[i]
+      if x then
+        b.x = x
+        local r = x.r
+        if r[2] > 0 and C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, r[2]) end
+        local col = not skill and "|cffffffff" or (skill < r[5] and "|cff9a6a6a") or COLOURS[ns.Colour(r, skill)]
+        b.left:SetText(col .. r[1] .. "|r" .. (x.owned == false and " |cffff6060*|r" or ""))
+        b.mid:SetText(tostring(r[5]))
+        b.right:SetText((x.owned == true and "|cff40c040" or "|cff909090") .. r[9] .. "|r")
+        b:Show()
+      else
+        b.x = nil; b:Hide()
+      end
+    end
+    updateScrollbar()
+    return
+  end
   if n > ROWS then
     summary:SetText(("%d-%d of %d options"):format(offset + 1, math.min(offset + ROWS, n), n))
   else
@@ -168,8 +254,16 @@ function renderRows()
 end
 
 local function fillList()
-  list = ns.Evaluate()
-  if listFor ~= ns.active then offset, listFor = 0, ns.active end   -- new profession: back to the top
+  if View() == "recipes" then
+    local owned, total, scanned
+    list, owned, total, scanned = recipeList()
+    for _, x in ipairs(list) do x.listView = true end
+    listInfo = { owned = owned, total = total, scanned = scanned }
+  else
+    list = ns.Evaluate()
+  end
+  local key = ns.active .. View() .. Filter()
+  if listFor ~= key then offset, listFor = 0, key end   -- new profession, tab or filter: back to the top
   offset = math.min(offset, maxOffset())
   renderRows()
 end
@@ -352,7 +446,15 @@ function UI.Update()
   frame.title:SetText("BSU · " .. ns.ProfName() .. " " .. (c.skill and (c.skill .. "/" .. (c.maxSkill or "?")) or "?"))
   optBtn:SetText(showOpts and "Back" or "Options")
   opts:SetShown(showOpts)
-  unlearnedCB:SetShown(not showOpts)
+  local rv = View() == "recipes"
+  unlearnedCB:SetShown(not showOpts and not rv)
+  for _, t in ipairs(tabs) do
+    if t.view == View() and not showOpts then t:LockHighlight(); t.text:SetTextColor(1, 0.82, 0) else t:UnlockHighlight(); t.text:SetTextColor(0.75, 0.75, 0.75) end
+  end
+  for _, fb in ipairs(filterBtns) do
+    fb:SetShown(rv and not showOpts)
+    if fb.filter == Filter() then fb:LockHighlight(); fb.text:SetTextColor(1, 0.82, 0) else fb:UnlockHighlight(); fb.text:SetTextColor(0.75, 0.75, 0.75) end
+  end
   UI.SyncOptions()
   fillList()
   if showOpts then summary:SetText("") end
@@ -408,6 +510,31 @@ local function build()
   ul:SetPoint("LEFT", unlearnedCB, "RIGHT", 0, 1); ul:SetText("All")
   frame.unlearnedLabel = ul
   unlearnedCB:SetScript("OnClick", function(self) DB().includeUnlearned = self:GetChecked() and true or false; ns.Refresh(0) end)
+
+  -- Tab row: Skill-ups | Recipes, and (Recipes) All / Owned / Missing.
+  local function smallButton(text, w, x, onClick)
+    local b = CreateFrame("Button", nil, frame)
+    b:SetSize(w, 18); b:SetPoint("TOPLEFT", x, -30)
+    local bg = b:CreateTexture(nil, "BACKGROUND"); bg:SetAllPoints(); bg:SetColorTexture(1, 1, 1, 0.06)
+    b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    b.text:SetPoint("CENTER"); b.text:SetText(text)
+    skinFont(b.text)
+    b:SetScript("OnClick", onClick)
+    return b
+  end
+  for i, t in ipairs({ { "Skill-ups", "skill" }, { "Recipes", "recipes" } }) do
+    local b = smallButton(t[1], 70, 8 + (i - 1) * 74, function()
+      DB().view = t[2]; showOpts = false; hideTooltips(); UI.Update()
+    end)
+    b.view = t[2]; tabs[#tabs + 1] = b
+  end
+  for i, f in ipairs({ { "All", "all" }, { "Owned", "owned" }, { "Missing", "missing" } }) do
+    local b = smallButton(f[1], 52, W - 8 - 3 * 56 + (i - 1) * 56 + 4, function()
+      DB().recipeFilter = f[2]; hideTooltips(); UI.Update()
+    end)
+    b.filter = f[2]; filterBtns[#filterBtns + 1] = b
+  end
 
   rows = {}
   for i = 1, ROWS do rows[i] = makeRow(i) end
