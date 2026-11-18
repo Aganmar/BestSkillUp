@@ -551,13 +551,16 @@ local function openProfession()
   if D.professions[info.parentProfessionID] then return info.parentProfessionID, info end
 end
 
+-- The profession window last shown. The list follows it only when it changes (opening a profession, or
+-- switching to another), not on every rescan, so picking another profession with the title sticks.
+local shownLine
 function ns.ScanOpenProfession()
   local T = C_TradeSkillUI
   local line, info = openProfession()
   if not line then return false end
   if T.IsTradeSkillReady and not T.IsTradeSkillReady() then return false end
   if T.IsTradeSkillLinked and T.IsTradeSkillLinked() then return false end   -- someone else's link
-  ns.SetActive(line)
+  if line ~= shownLine then shownLine = line; ns.SetActive(line) end
   local P = ns.Prof(line)
   if info.skillLevel and info.skillLevel > 0 then
     P.skill, P.maxSkill = info.skillLevel, info.maxSkillLevel
@@ -642,6 +645,7 @@ f:SetScript("OnEvent", function(_, ev, arg1)
       end
     end)
   elseif ev == "TRADE_SKILL_CLOSE" then
+    shownLine = nil
     if ns.UI then ns.UI.OnProfessionHidden() end
   elseif ev == "SKILL_LINES_CHANGED" or ev == "CHAT_MSG_SKILL" then
     readSkillLines()
