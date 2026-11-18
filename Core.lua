@@ -202,13 +202,13 @@ function ns.ApplySeen(id)
   local o, y, g, gr = r.base[1], r.base[2], r.base[3], r.base[4]
   local lo = function(d) return S[d] and S[d][1] end
   local hi = function(d) return S[d] and S[d][2] end
-  -- Known at a lower skill than Wowhead's learn level: shift the whole recipe down (a first guess).
+  -- Only a threshold that what you've seen contradicts is moved, and only as far as the evidence says;
+  -- every other one keeps Wowhead's value (no guessing that the whole recipe moved).
+  -- Known at a lower skill than Wowhead's learn level: it can be learned at least that early.
   local first = mn(mn(lo(0), lo(1)), mn(lo(2), lo(3)))
-  if first and first < o then
-    local shift = o - first
-    o, y, g, gr = first, y - shift, g - shift, gr - shift
-  end
-  -- Then fit what was seen: orange below yellow, yellow below green, green below grey.
+  if first and first < o then o = first end
+  -- Each colour starts after the last skill the colour before it was seen at, and no later than the first
+  -- skill it (or a later colour) was seen at.
   y = clamp(math.max(y, o), mx(nil, hi(0) and hi(0) + 1), mn(mn(lo(1), lo(2)), lo(3)))
   g = clamp(math.max(g, y), mx(hi(0), hi(1)) and mx(hi(0), hi(1)) + 1, mn(lo(2), lo(3)))
   gr = clamp(math.max(gr, g), mx(mx(hi(0), hi(1)), hi(2)) and mx(mx(hi(0), hi(1)), hi(2)) + 1, lo(3))
