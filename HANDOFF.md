@@ -96,3 +96,4 @@ The inputs are Wowhead (WoW Forever) exports from the profession's skill page (e
 5. Tests + ranking regression, then local deploy; release when asked.
 
 Blacksmithing re-export 2026-11-19: no recipes added or removed and no threshold changes vs 2026-11-15; 7 sources filled in (5 drop, 2 vendor). Colour evidence from 151 recipes: 5 contradict Wowhead, none fully pinned yet (all in `_pending`).
+In-game audit 2026-11-19 (skill 251, saved as `Tools/data/audit_blacksmithing.json`): the game lists 506 recipes. All 452 Wowhead recipes are among them with identical reagents and output. The other 54 are Season of Discovery recipe IDs (Obsidian, Icebane, Scarlet Soldier, Razorspike, "Refined"/"Hardened" Arcanite variants, SoD Golden Scale set...), none learned and no source: left out of the data until one is seen learned or sourced. `GetRecipeSourceText` returns nothing on Forever.
