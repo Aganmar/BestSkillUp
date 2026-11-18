@@ -8,11 +8,16 @@ profession.json: {"professions": {"<Profession>": {"recipes": [row, ...]}}, "ite
     item = [name, quality, buyprice, sellprice, avgbuyout]
 mining.json (Blacksmithing only): the same shape for Mining; its "Smelt ..." recipes become ns.Data.mining.
 
+Corrections: Tools/data/corrections_<profession>.json (e.g. corrections_blacksmithing.json), when it exists, is
+applied on top of the export: {"<spellID>": {"name": ..., "yellow": 240, "evidence": "..."}} with any of
+orange / yellow / green / grey. Only colour boundaries observed exactly in game go there (the last skill of one
+colour and the first of the next both seen), so a new export can't undo them and nothing in it is a guess.
+
 Export a profession from its Wowhead skill page (e.g. https://www.wowhead.com/forever/skill=185/cooking) by
 mapping g_listviews.recipes.data and g_items into that shape in the browser console. Tools/data/ keeps the
 exports used for the current data files.
 """
-import json, sys, datetime
+import json, os, sys, datetime
 
 prof, skill_line, src, out = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
 mining_src = sys.argv[5] if len(sys.argv) > 5 else None
@@ -24,7 +29,8 @@ if mining_src:
     M = json.load(open(mining_src, encoding="utf-8"))
     for k, v in M["items"].items():
         items.setdefault(k, v)
-    mining = [r for r in M["recipes"] if r[1].startswith("Smelt")]
+    rows = M["recipes"] if "recipes" in M else M["professions"]["Mining"]["recipes"]
+    mining = [r for r in rows if r[1].startswith("Smelt")]
 
 # Wowhead's buyprice is a template value, not proof an item is vendor-sold: only these count as vendor items.
 VENDOR_NAMES = {
@@ -50,12 +56,21 @@ def group(src):
     if 4 in s: return "quest"
     return "other"
 
+corr_path = os.path.join(os.path.dirname(src), "corrections_" + prof.lower().replace(" ", "") + ".json")
+CORR = {}
+if os.path.exists(corr_path):
+    CORR = {int(k): v for k, v in json.load(open(corr_path, encoding="utf-8")).items() if not k.startswith("_")}
+
 def thresholds(r):
     c = r[5]
     gr = c[3]; g = c[2] or gr; y = c[1] or g
     o = c[0] or r[7] or y or 1
     if not c[0] and not r[9] and (r[7] or 0) <= 20:
         o = 1  # starter recipes known from skill 1
+    fix = CORR.get(r[0])
+    if fix:
+        o, y, g, gr = fix.get("orange", o), fix.get("yellow", y), fix.get("green", g), fix.get("grey", gr)
+        assert o <= y <= g <= gr, f"correction for {r[0]} {r[1]} breaks the colour order: {o} {y} {g} {gr}"
     return o, y, g, gr
 
 def lua_str(s):
@@ -64,9 +79,9 @@ def lua_str(s):
 def recipe_line(r):
     o, y, g, gr = thresholds(r)
     reag = ",".join(f"{i},{q}" for i, q in r[8])
-    # Wowhead gives some recipes that make an item a count of 0 (oils, wands, kits): they make one.
+    # Wowhead gives some recipes a count of 0 (oils, wands, kits, and ones that make no item): they make one.
     lo, hi = r[3], r[4]
-    if r[2] and not lo: lo = hi = 1
+    if not lo: lo = hi = 1
     return f"[{r[0]}]={{{lua_str(r[1])},{r[2] or 0},{lo},{hi},{o},{y},{g},{gr},\"{group(r[9])}\",{{{reag}}}}},"
 
 # Recipes that can never give a point (grey at 0, e.g. unfinished entries) are left out.
@@ -104,4 +119,7 @@ for k in sorted(used, key=int):
         lines.append(f"    [{k}]={it[2]}, -- {it[0]}")
 lines += ["  },", "})", ""]
 open(out, "w", newline="\n", encoding="utf-8").write("\n".join(lines))
+if CORR:
+    missing = [k for k in CORR if k not in {r[0] for r in recipes}]
+    print(f"{len(CORR)} corrections from {os.path.basename(corr_path)}" + (f" ({len(missing)} for recipes not in the export: {missing})" if missing else ""), file=sys.stderr)
 print(f"{prof}: {len(recipes)} recipes, {len(mining)} smelts, {len(used)} items -> {out}", file=sys.stderr)

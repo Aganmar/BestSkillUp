@@ -342,3 +342,4 @@ function ns.DevSlash(cmd, rest)
   end
   return true
 end
+ns.DevHelp = (ns.DevHelp or "") .. "salvager [clear|debug]  "

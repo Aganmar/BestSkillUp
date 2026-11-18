@@ -1,9 +1,10 @@
 ## Interface: 16001
 ## Title: BestSkillUp Dev
-## Notes: Development only: records disenchants to measure the Arcane Salvager (/bsu salvager)
+## Notes: Development only: disenchant recording for the Arcane Salvager (/bsu salvager) and recipe audits (/bsu audit)
 ## Author: Aganmar
 ## Version: 1
 ## Dependencies: BestSkillUp
 ## IconTexture: Interface\AddOns\BestSkillUp\Media\BestSkillUp
 
 DisenchantLog.lua
+Audit.lua
