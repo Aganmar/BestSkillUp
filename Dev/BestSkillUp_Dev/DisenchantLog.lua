@@ -18,6 +18,15 @@ local DE_LOG_MAX = 3000
 local BOOST_ID, BOOST_NAME = 1283701, "Boosted Disenchanting"
 local pendingDE
 
+-- Only armour or weapons of uncommon to epic quality can be disenchanted: anything else a check finds (a
+-- locked stack of cloth being mailed or listed, say) isn't the item.
+local function disenchantable(link)
+  if not link then return false end
+  local r = { (C_Item and C_Item.GetItemInfo or GetItemInfo)(link) }
+  local q, c = r[3], r[12]
+  return (c == 2 or c == 4) and q ~= nil and q >= 2 and q <= 4
+end
+
 local function bagItemLocked()
   local C = C_Container
   for bag = 0, (NUM_BAG_SLOTS or 4) do
@@ -27,7 +36,7 @@ local function bagItemLocked()
       local info = C and C.GetContainerItemInfo and C.GetContainerItemInfo(bag, slot)
       if type(info) == "table" then locked, link = info.isLocked, info.hyperlink
       elseif GetContainerItemInfo then local _, _, l, _, _, _, lk = GetContainerItemInfo(bag, slot); locked, link = l, lk end
-      if locked and link then return link end
+      if locked and link and disenchantable(link) then return link end
     end
   end
 end
@@ -101,7 +110,7 @@ local function bagItemByName(name)
     for slot = 1, n do
       local info = C.GetContainerItemInfo(bag, slot)
       local link = type(info) == "table" and info.hyperlink
-      if link and link:find("[" .. name .. "]", 1, true) then return link end
+      if link and link:find("[" .. name .. "]", 1, true) and disenchantable(link) then return link end
     end
   end
 end
@@ -112,7 +121,7 @@ local function onUse(bag, slot)
   if not (SpellIsTargeting and SpellIsTargeting()) then return end
   local info = C_Container and C_Container.GetContainerItemInfo and C_Container.GetContainerItemInfo(bag, slot)
   local link = type(info) == "table" and info.hyperlink
-  if link then targeted = { link = link, t = GetTime() }; dbg("targeted " .. link) end
+  if link and disenchantable(link) then targeted = { link = link, t = GetTime() }; dbg("targeted " .. link) end
 end
 if hooksecurefunc then
   if C_Container and C_Container.UseContainerItem then pcall(hooksecurefunc, C_Container, "UseContainerItem", onUse) end
@@ -127,24 +136,24 @@ local function bagSnapshot()
   for bag = 0, (NUM_BAG_SLOTS or 4) do
     for slot = 1, C.GetContainerNumSlots(bag) or 0 do
       local info = C.GetContainerItemInfo(bag, slot)
-      if type(info) == "table" and info.hyperlink then snap[bag * 1000 + slot] = { info.hyperlink, info.stackCount or 1 } end
+      if type(info) == "table" and info.hyperlink then
+        snap[info.hyperlink] = (snap[info.hyperlink] or 0) + (info.stackCount or 1)
+      end
     end
   end
   return snap
 end
+-- The armour or weapon there's less of than when the cast started (counts per item, so bags re-sorting
+-- themselves, or several of the same item, don't matter).
 local function vanishedItem(snap)
-  local C = C_Container
-  for key, was in pairs(snap) do
-    local info = C.GetContainerItemInfo(math.floor(key / 1000), key % 1000)
-    local gone = type(info) ~= "table" or info.hyperlink ~= was[1] or (info.stackCount or 1) < was[2]
-    if gone then
-      local _, _, _, c = itemFromLink(was[1])
-      if c == 2 or c == 4 then return was[1] end   -- weapon or armour
-    end
+  local now = bagSnapshot()
+  for link, was in pairs(snap) do
+    if (now[link] or 0) < was and disenchantable(link) then return link end
   end
 end
 
 local function startPending(castGUID, how, link)
+  if link and not disenchantable(link) then link = nil end
   local id, ilvl, q, c
   if link then id, ilvl, q, c = itemFromLink(link) end
   local names, auraIDs, boost = playerAuras()
@@ -170,14 +179,23 @@ local function commit(source)
   pendingDE = nil
   lastCast = p.cast
   if p.id or not p.snap then finish(p, source); return end
-  C_Timer.After(0.6, function()   -- the item leaves the bags just after the loot appears
+  -- The item leaves the bags some time after the loot appears (when the loot window closes, on some
+  -- clients): look every half second for up to 10 seconds.
+  local tries = 0
+  local function look()
+    tries = tries + 1
     local link = vanishedItem(p.snap)
     if link then
       p.link = link; p.id, p.ilvl, p.q, p.c = itemFromLink(link)
-      dbg("item from bag change: " .. link)
+      dbg("item from bag change: " .. link .. " after " .. tries * 0.5 .. "s")
+      finish(p, source)
+    elseif tries >= 20 then
+      finish(p, source)
+    else
+      C_Timer.After(0.5, look)
     end
-    finish(p, source)
-  end)
+  end
+  C_Timer.After(0.5, look)
 end
 
 local function fromLootWindow()
