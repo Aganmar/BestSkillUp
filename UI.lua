@@ -69,6 +69,9 @@ local function showRecipeTooltip(row)
       (l.u.p and ns.Money(l.u.p * l.q) or "?") .. " |cff808080" .. l.u.src .. "|r", 1, 1, 1)
   end
   if x.c.back > 0 then costTip:AddDoubleLine("Back", ns.Money(x.c.back) .. " |cff808080" .. x.c.rsrc .. "|r", 0.6, 0.6, 0.6) end
+  if x.c.rsrc == "disenchant" and ns.SalvagerOn() then
+    costTip:AddLine(("Disenchant value with the Arcane Salvager (%d%% chance of max + 1 dust/essence)"):format(ns.SALVAGER_CHANCE * 100 + 0.5), 0.6, 0.6, 0.6)
+  end
   costTip:AddDoubleLine("Net", ns.Money(x.c.net), 0.6, 0.6, 0.6)
   local o, y, g, gr = ns.Thresholds(x.r)
   costTip:AddLine(("|cffff8040%d|r |cffffff00%d|r |cff40c040%d|r |cff808080%d|r"):format(o, y, g, gr))
@@ -406,6 +409,7 @@ local function buildOptions()
     check(opts, it[1], cols[i], y, function() return DB().resale == it[2] end, function() DB().resale = it[2] end)
   end
   check(opts, "Disenchant", cols[1], y - 20, function() return ns.UseDisenchant() end, function(v) DB().disenchant = v end)
+  check(opts, "Arcane Salvager", cols[2], y - 20, function() return ns.SalvagerOn() end, function(v) DB().salvagerBonus = v and true or false end)
   y = y - 46
   numBox(opts, "AH cut %", 4, y, "ahCut")
   numBox(opts, "Sell-through %", 112, y, "ahSellThrough")

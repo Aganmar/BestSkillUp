@@ -20,6 +20,7 @@ local DEFAULTS = {
   sources = { trainer = true, vendor = true, drop = false, quest = false, other = true },
   overrides = {},             -- [itemID] = copper
   disenchant = nil,           -- count disenchant value of what you make: nil = if this character has Enchanting, or true/false
+  salvagerBonus = false,      -- value disenchants as done near an Arcane Salvager (Boosted Disenchanting)
   point = nil,                -- saved window position
   seen = {},                  -- [spellID] = { [difficulty] = { lowSkill, highSkill } }: colours the game showed (all characters)
   shown = true,
@@ -401,13 +402,26 @@ local function indexEnchanterMade()
   if P then for _, r in pairs(P.recipes) do if r[2] > 0 then enchanterMade[r[2]] = true end end end
 end
 
+-- Arcane Salvager (Boosted Disenchanting), measured in WoW: Forever (BestSkillUp_Dev recordings, 2026-11-19):
+-- when the bonus triggers a dust or essence drop comes out at the table's maximum + 1 (3 on a 1-2 row, 6 on a
+-- 2-5 row; never doubled or x1.5). The chance is taken as 30% until there's more data (measured 34%, 95% range
+-- 24-45%). Shards are left alone: no boosted shard has shown a bonus yet.
+ns.SALVAGER_CHANCE = 0.30
+local SHARDS = { [10978] = true, [11084] = true, [11138] = true, [11139] = true, [11177] = true, [11178] = true,
+  [14343] = true, [14344] = true, [20725] = true }
+function ns.SalvagerOn() return DB and DB.salvagerBonus == true end
+
 local function rowValue(rows, ilvl)
   for _, row in ipairs(rows) do
     if ilvl >= row[1] and ilvl <= row[2] then
       local v = 0
       for i = 3, #row do
         local chance, lo, hi, mat = row[i][1], row[i][2], row[i][3], row[i][4]
-        v = v + chance / 100 * (lo + hi) / 2 * matValue(mat)
+        local qty = (lo + hi) / 2
+        if DB.salvagerBonus and not SHARDS[mat] then
+          qty = (1 - ns.SALVAGER_CHANCE) * qty + ns.SALVAGER_CHANCE * (hi + 1)
+        end
+        v = v + chance / 100 * qty * matValue(mat)
       end
       return v
     end

@@ -23,6 +23,7 @@ Open your profession window and the ranked list appears beside it, with the best
 - **Your own prices** – set a manual price for any item with `/bsu price`.
 - **Scrollable list** – every option, not just the top 16: mouse wheel (Shift for a page) or drag the bar on the right.
 - **Tooltips** – hover a row for the item (with its Auctionator price) and the full cost breakdown; Shift-click for a Wowhead link you can copy.
+- **Arcane Salvager** – tick **Arcane Salvager** in Options when you'll disenchant near one: disenchant values then include its bonus (a 30% chance that dust or essence comes out at one more than the normal maximum, measured in game).
 - **Specializations** – once you've learned Armorsmith or Weaponsmith (and a master weaponsmith school), or a Leatherworking school, plans for the rival specializations are no longer suggested. Before you specialise, everything is still shown, with a "Needs ..." note in the tooltip.
 - **Recipes tab** – switch from **Skill-ups** to **Recipes** at the top of the window to see every recipe of the profession by the skill it's learned at, with its source. Show **All**, **Owned** or **Missing** (missing ones are marked `*`); Shift-click any recipe for its Wowhead link.
 - **EllesmereUI styling** when installed.
