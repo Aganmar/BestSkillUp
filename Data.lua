@@ -73,9 +73,10 @@ end
 -- Specialization plans (Wowhead's "specialization" field, WoW: Forever, 2026-11-19): spell the recipe needs.
 -- Blacksmithing: Weaponsmith 9787 / Armorsmith 9788, and the Weaponsmith masters Swordsmith 17039,
 -- Hammersmith 17040, Axesmith 17041. Leatherworking: Dragonscale 10656 / Elemental 10658 / Tribal 10660.
+-- Engineering: Gnomish 20219 / Goblin 20222.
 D.specNames = { [9787] = "Weaponsmith", [9788] = "Armorsmith", [17039] = "Master Swordsmith", [17040] = "Master Hammersmith",
   [17041] = "Master Axesmith", [10656] = "Dragonscale Leatherworking", [10658] = "Elemental Leatherworking",
-  [10660] = "Tribal Leatherworking" }
+  [10660] = "Tribal Leatherworking", [20219] = "Gnomish Engineering", [20222] = "Goblin Engineering" }
 D.specOf = {}
 for spell, ids in pairs({
   [9787] = { 23638, 23639, 16995, 15294, 15292, 10015, 10011, 10007, 10003 },
@@ -87,6 +88,8 @@ for spell, ids in pairs({
   [10656] = { 20855, 22926, 23708, 24654, 19107, 19054, 24655, 19094, 19089, 19085, 19077, 10650, 19060, 19050, 10619 },
   [10658] = { 23710, 20854, 22928, 16746, 16661, 19095, 26279, 19101, 19090, 19078, 19079, 19076, 19067, 19061, 19059,
     10632, 10630 },
+  [20219] = { 12759, 12895, 12897, 12899, 12902, 12903, 12905, 12906, 12907, 15633, 23096, 23129, 23489 },
+  [20222] = { 8895, 12715, 12716, 12717, 12718, 12754, 12755, 12758, 12760, 12908, 13240, 15628, 23078, 23486 },
   [10660] = { 23709, 22927, 16728, 20853, 19097, 19104, 19087, 16650, 19081, 19084, 19086, 19074, 19080, 19073, 19063,
     19066, 19068, 19062, 19053, 10647, 10621 },
 }) do

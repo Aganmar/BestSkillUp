@@ -46,6 +46,8 @@ VENDOR_NAMES = {
     "Flagon of Dwarven Honeymead", "Thunder Ale", "Bottle of Dalaran Noir",
     # Enchanting
     "Copper Rod", "Maple Seed", "Stranglethorn Seed", "Red-speckled Mushroom",
+    # Alchemy / Engineering
+    "Volatile Rum", "Razor Arrow", "Nightcrawlers",
 }
 
 def group(src):

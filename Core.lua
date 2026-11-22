@@ -496,7 +496,8 @@ end
 -- leatherworking school), or it's a Weaponsmith master plan and you're an Armorsmith or another master.
 -- With no specialization yet nothing is ruled out: you could still pick either.
 local RIVALS = { [9787] = { 9788 }, [9788] = { 9787 }, [17039] = { 9788, 17040, 17041 }, [17040] = { 9788, 17039, 17041 },
-  [17041] = { 9788, 17039, 17040 }, [10656] = { 10658, 10660 }, [10658] = { 10656, 10660 }, [10660] = { 10656, 10658 } }
+  [17041] = { 9788, 17039, 17040 }, [10656] = { 10658, 10660 }, [10658] = { 10656, 10660 }, [10660] = { 10656, 10658 },
+  [20219] = { 20222 }, [20222] = { 20219 } }
 local function hasSpell(id) return IsPlayerSpell and IsPlayerSpell(id) or false end
 function ns.SpecNeeded(id) return D.specOf and D.specOf[id] end
 function ns.SpecBlocked(id)
