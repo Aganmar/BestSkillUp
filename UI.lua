@@ -39,6 +39,13 @@ local function tip(name, item)
   return t
 end
 
+-- Profit (value mode): green when you make gold, red when you lose it.
+local function profitText(v)
+  if v == nil or v == -math.huge then return "|cff808080no price|r" end
+  local m = ns.Money(math.abs(v))
+  return v >= 0 and ("|cff40c040+|r" .. m) or ("|cffff4040-|r" .. m)
+end
+
 local function showRecipeTooltip(row)
   local x = row.x
   itemTip = itemTip or tip("BestSkillUpItemTip", true)
@@ -63,7 +70,11 @@ local function showRecipeTooltip(row)
   costTip:ClearAllPoints()
   costTip:SetPoint("TOPLEFT", itemTip, "BOTTOMLEFT", 0, -2)
   costTip:AddLine(COLOURS[x.colour] .. x.r[1] .. "|r")
-  costTip:AddDoubleLine(("%d%%  ·  %.2f crafts/pt"):format(x.p * 100, 1 / x.p), ns.Money(x.perPt) .. "/pt", 1, 1, 1)
+  if x.value then
+    costTip:AddDoubleLine("Profit per craft (max skill)", profitText(x.profit), 1, 1, 1)
+  else
+    costTip:AddDoubleLine(("%d%%  ·  %.2f crafts/pt"):format(x.p * 100, 1 / x.p), ns.Money(x.perPt) .. "/pt", 1, 1, 1)
+  end
   for _, l in ipairs(x.c.lines) do
     costTip:AddDoubleLine(l.q .. "x " .. ns.ItemColor(l.id) .. ns.ItemName(l.id) .. "|r",
       (l.u.p and ns.Money(l.u.p * l.q) or "?") .. " |cff808080" .. l.u.src .. "|r", 1, 1, 1)
@@ -72,7 +83,8 @@ local function showRecipeTooltip(row)
   if x.c.rsrc == "disenchant" and ns.SalvagerOn() then
     costTip:AddLine(("Disenchant value with the Arcane Salvager (%d%% chance of max + 1 dust/essence)"):format(ns.SALVAGER_CHANCE * 100 + 0.5), 0.6, 0.6, 0.6)
   end
-  costTip:AddDoubleLine("Net", ns.Money(x.c.net), 0.6, 0.6, 0.6)
+  if not x.value then costTip:AddDoubleLine("Net", ns.Money(x.c.net), 0.6, 0.6, 0.6) end
+  if x.value and ns.DB.resale == "none" then costTip:AddLine("Valued at AH or vendor (resale is set to Ignore)", 0.6, 0.6, 0.6) end
   local o, y, g, gr = ns.Thresholds(x.r)
   costTip:AddLine(("|cffff8040%d|r |cffffff00%d|r |cff40c040%d|r |cff808080%d|r"):format(o, y, g, gr))
   if ns.OvertimeRank() > 0 and x.p > 0 and x.p < 1 then
@@ -239,10 +251,11 @@ function renderRows()
     updateScrollbar()
     return
   end
+  local what = ns.ValueMode() and "recipes by profit (max skill)" or "options"
   if n > ROWS then
-    summary:SetText(("%d-%d of %d options"):format(offset + 1, math.min(offset + ROWS, n), n))
+    summary:SetText(("%d-%d of %d %s"):format(offset + 1, math.min(offset + ROWS, n), n, what))
   else
-    summary:SetText(n .. " options")
+    summary:SetText(n .. " " .. what)
   end
   for i = 1, ROWS do
     local x, b = list[offset + i], rows[i]
@@ -250,8 +263,13 @@ function renderRows()
       b.x = x
       if x.r[2] > 0 and C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, x.r[2]) end
       b.left:SetText(COLOURS[x.colour] .. x.r[1] .. "|r" .. ((not x.known and scanned) and " |cffff6060*|r" or ""))
-      b.mid:SetText(("%d%%"):format(x.p * 100))
-      b.right:SetText(ns.Money(x.perPt))
+      if x.value then
+        b.mid:SetText("")
+        b.right:SetText(profitText(x.profit))
+      else
+        b.mid:SetText(("%d%%"):format(x.p * 100))
+        b.right:SetText(ns.Money(x.perPt))
+      end
       b:Show()
     else
       b.x = nil; b:Hide()
@@ -410,6 +428,7 @@ local function buildOptions()
   end
   check(opts, "Disenchant", cols[1], y - 20, function() return ns.UseDisenchant() end, function(v) DB().disenchant = v end)
   check(opts, "Arcane Salvager", cols[2], y - 20, function() return ns.SalvagerOn() end, function(v) DB().salvagerBonus = v and true or false end)
+  check(opts, "Profit at max", cols[3], y - 20, function() return DB().valueAtMax ~= false end, function(v) DB().valueAtMax = v and true or false end)
   y = y - 46
   numBox(opts, "AH cut %", 4, y, "ahCut")
   numBox(opts, "Sell-through %", 112, y, "ahSellThrough")

@@ -21,6 +21,7 @@ local DEFAULTS = {
   overrides = {},             -- [itemID] = copper
   disenchant = nil,           -- count disenchant value of what you make: nil = if this character has Enchanting, or true/false
   salvagerBonus = false,      -- value disenchants as done near an Arcane Salvager (Boosted Disenchanting)
+  valueAtMax = true,          -- at max skill (e.g. 150/150, 300/300) rank recipes by profit per craft instead
   point = nil,                -- saved window position
   seen = {},                  -- [spellID] = { [difficulty] = { lowSkill, highSkill } }: colours the game showed (all characters)
   shown = true,
@@ -521,10 +522,44 @@ local function usable(id, r, s, P)
 end
 ns.Usable = usable
 
+-- At the skill cap (150/150, 300/300 ...) nothing gives a point, so with the option on the list
+-- ranks recipes by profit per craft instead.
+function ns.AtMax(line)
+  local P = ns.Prof(line or ns.active)
+  return P.skill ~= nil and (P.maxSkill or 0) > 0 and P.skill >= P.maxSkill
+end
+function ns.ValueMode(line) return DB and DB.valueAtMax ~= false and ns.AtMax(line) or false end
+-- Profit needs a sale price, so with resale set to Ignore it values what you make at AH or vendor.
+function ns.ValueResale() return DB.resale == "none" and "ah" or DB.resale end
+
+-- Every recipe you could craft, most profit per craft first (value mode).
+function ns.EvaluateValue(s, line)
+  line = line or ns.active
+  local P, data = ns.Prof(line), D.professions[line]
+  s = s or P.skill or 1
+  local out = {}
+  if not data then return out end
+  local mode = ns.ValueResale()
+  for id, r in pairs(data.recipes) do
+    if not r.pinned and usable(id, r, s, P) then
+      local c = ns.RecipeCost(r, mode)
+      out[#out + 1] = { id = id, r = r, p = ns.Chance(id, r, s, line), c = c, colour = ns.Colour(r, s), value = true,
+        profit = (c.missing > 0) and -math.huge or -c.net, known = P.known[id] }
+    end
+  end
+  table.sort(out, function(a, b)
+    if a.profit ~= b.profit then return a.profit > b.profit end
+    return a.id < b.id
+  end)
+  return out
+end
+
 -- All recipes of a profession (default: the active one) that can give a point at skill s
 -- (default: your skill in it), cheapest expected cost per point first.
+-- At max skill with the option on, every recipe by profit instead (ns.EvaluateValue).
 function ns.Evaluate(s, line)
   line = line or ns.active
+  if s == nil and ns.ValueMode(line) then return ns.EvaluateValue(nil, line) end
   local P, data = ns.Prof(line), D.professions[line]
   s = s or P.skill or 1
   local out = {}
@@ -724,6 +759,9 @@ SlashCmdList.BESTSKILLUP = function(msg)
     if n then CDB.overtime = math.max(0, math.min(5, math.floor(n))) end
     ns.Print(("Working Overtime %d/5 (%d%% fewer failed skill-ups on yellow/green)"):format(ns.OvertimeRank(), ns.OvertimeBonus() * 100 + 0.5))
     ns.Refresh(0)
+  elseif cmd == "max" then
+    DB.valueAtMax = DB.valueAtMax == false
+    ns.Print("At max skill: " .. (DB.valueAtMax and "rank all recipes by profit" or "keep ranking by cost per point")); ns.Refresh(0)
   elseif cmd == "wh" then
     DB.useWH = not DB.useWH; ns.Print("WH prices " .. (DB.useWH and "on" or "off")); ns.Refresh(0)
   elseif cmd == "price" then
@@ -739,6 +777,6 @@ SlashCmdList.BESTSKILLUP = function(msg)
   elseif cmd == "reset" then
     DB.point = nil; if ns.UI then ns.UI.ResetPosition() end
   else
-    ns.Print("/bsu  prof  opt  resale none/vendor/ah  unlearned  source <type>  de [auto]  overtime <0-5>  chef <0-5>  " .. (ns.DevHelp or "") .. "wh  price <id> [c]  debug  reset")
+    ns.Print("/bsu  prof  opt  resale none/vendor/ah  unlearned  source <type>  de [auto]  overtime <0-5>  chef <0-5>  max  " .. (ns.DevHelp or "") .. "wh  price <id> [c]  debug  reset")
   end
 end

@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- **Profit at max skill:** at the cap of a profession (150/150, 300/300 ...) the list shows every recipe you can craft, ranked by profit per craft. Turn it off with **Profit at max** in Options or `/bsu max`.
+
 ## 0.14.0
 - New professions: **Alchemy**, **Tailoring** and **Engineering**. BestSkillUp now covers every crafting profession.
 - **Specializations:** once you've learned Armorsmith or Weaponsmith (and a master weaponsmith school), a Leatherworking school, or Gnomish or Goblin Engineering, plans for the rival specializations are no longer suggested. Before you specialise, everything is still shown, with a "Needs ..." note in the tooltip.
