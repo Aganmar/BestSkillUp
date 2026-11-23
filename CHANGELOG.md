@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unreleased
-- **Profit tab:** every recipe you can craft, ranked by profit per craft, at any skill (`/bsu profit`). At max skill (150/150, 300/300 ...) the Skill-ups tab shows it too; turn that off with **Profit at max** in Options or `/bsu max`.
+- **Profit tab:** every recipe you can craft, ranked by profit per craft, at any skill (`/bsu profit`). At max skill (150/150, 300/300 ...) the Skill-ups tab is hidden and Profit shows instead; tick **Skill-ups at max** in Options (or `/bsu max`) to keep it.
 
 ## 0.14.0
 - New professions: **Alchemy**, **Tailoring** and **Engineering**. BestSkillUp now covers every crafting profession.

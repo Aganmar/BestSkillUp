@@ -17,7 +17,12 @@ local function skinFont(fs) skinFonts[#skinFonts + 1] = fs; if skin then skin.Fo
 local openedBySlash, dismissed, showOpts = false, false, false
 
 local function DB() return ns.DB end
-local function View() local v = DB().view; return (v == "recipes" or v == "profit") and v or "skill" end
+-- The tab showing. At max skill the Skill-ups tab is hidden (unless "Skill-ups at max"), so Profit shows instead.
+local function View()
+  local v = DB().view
+  if v == "recipes" or v == "profit" then return v end
+  return ns.SkillTabShown() and "skill" or "profit"
+end
 local function Filter() local f = DB().recipeFilter; return (f == "owned" or f == "missing") and f or "all" end
 
 -- ---------------------------------------------------------------- list
@@ -251,7 +256,7 @@ function renderRows()
     updateScrollbar()
     return
   end
-  local what = View() == "profit" and "recipes by profit" or ns.ValueMode() and "recipes by profit (max skill)" or "options"
+  local what = View() == "profit" and "recipes by profit" or "options"
   if n > ROWS then
     summary:SetText(("%d-%d of %d %s"):format(offset + 1, math.min(offset + ROWS, n), n, what))
   else
@@ -430,7 +435,7 @@ local function buildOptions()
   end
   check(opts, "Disenchant", cols[1], y - 20, function() return ns.UseDisenchant() end, function(v) DB().disenchant = v end)
   check(opts, "Arcane Salvager", cols[2], y - 20, function() return ns.SalvagerOn() end, function(v) DB().salvagerBonus = v and true or false end)
-  check(opts, "Profit at max", cols[3], y - 20, function() return DB().valueAtMax ~= false end, function(v) DB().valueAtMax = v and true or false end)
+  check(opts, "Skill-ups at max", cols[3], y - 20, function() return DB().skillupsAtMax == true end, function(v) DB().skillupsAtMax = v and true or false end)
   y = y - 46
   numBox(opts, "AH cut %", 4, y, "ahCut")
   numBox(opts, "Sell-through %", 112, y, "ahSellThrough")
@@ -477,6 +482,12 @@ function UI.Update()
   opts:SetShown(showOpts)
   local rv = View() == "recipes"
   unlearnedCB:SetShown(not showOpts and not rv)
+  local tx = 8
+  for _, t in ipairs(tabs) do
+    local shown = t.view ~= "skill" or ns.SkillTabShown()
+    t:SetShown(shown)
+    if shown then t:ClearAllPoints(); t:SetPoint("TOPLEFT", tx, -30); tx = tx + 60 end
+  end
   for _, t in ipairs(tabs) do
     if t.view == View() and not showOpts then t:LockHighlight(); t.text:SetTextColor(1, 0.82, 0) else t:UnlockHighlight(); t.text:SetTextColor(0.75, 0.75, 0.75) end
   end

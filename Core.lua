@@ -21,7 +21,7 @@ local DEFAULTS = {
   overrides = {},             -- [itemID] = copper
   disenchant = nil,           -- count disenchant value of what you make: nil = if this character has Enchanting, or true/false
   salvagerBonus = false,      -- value disenchants as done near an Arcane Salvager (Boosted Disenchanting)
-  valueAtMax = true,          -- at max skill (e.g. 150/150, 300/300) rank recipes by profit per craft instead
+  skillupsAtMax = false,      -- keep the Skill-ups tab at max skill (150/150, 300/300 ...); off: it's hidden and Profit shows
   point = nil,                -- saved window position
   seen = {},                  -- [spellID] = { [difficulty] = { lowSkill, highSkill } }: colours the game showed (all characters)
   shown = true,
@@ -522,13 +522,13 @@ local function usable(id, r, s, P)
 end
 ns.Usable = usable
 
--- At the skill cap (150/150, 300/300 ...) nothing gives a point, so with the option on the list
--- ranks recipes by profit per craft instead.
+-- At the skill cap (150/150, 300/300 ...) nothing gives a point, so the Skill-ups tab is hidden and the
+-- Profit tab shows instead, unless "Skill-ups at max" is on.
 function ns.AtMax(line)
   local P = ns.Prof(line or ns.active)
   return P.skill ~= nil and (P.maxSkill or 0) > 0 and P.skill >= P.maxSkill
 end
-function ns.ValueMode(line) return DB and DB.valueAtMax ~= false and ns.AtMax(line) or false end
+function ns.SkillTabShown(line) return not ns.AtMax(line) or (DB and DB.skillupsAtMax == true) end
 -- Profit needs a sale price, so with resale set to Ignore it values what you make at AH or vendor.
 function ns.ValueResale() return DB.resale == "none" and "ah" or DB.resale end
 
@@ -556,10 +556,8 @@ end
 
 -- All recipes of a profession (default: the active one) that can give a point at skill s
 -- (default: your skill in it), cheapest expected cost per point first.
--- At max skill with the option on, every recipe by profit instead (ns.EvaluateValue).
 function ns.Evaluate(s, line)
   line = line or ns.active
-  if s == nil and ns.ValueMode(line) then return ns.EvaluateValue(nil, line) end
   local P, data = ns.Prof(line), D.professions[line]
   s = s or P.skill or 1
   local out = {}
@@ -690,6 +688,7 @@ f:SetScript("OnEvent", function(_, ev, arg1)
     copyDefaults(BestSkillUpCharDB, CHAR_DEFAULTS)
     DB, CDB = BestSkillUpDB, BestSkillUpCharDB
     ns.DB, ns.CDB = DB, CDB
+    if DB.valueAtMax == false then DB.skillupsAtMax = true end; DB.valueAtMax = nil   -- dev build's "Profit at max" option
     migrate()
     -- Price syncing was removed in 0.7.0: drop its saved data.
     BestSkillUpDB.shared, BestSkillUpDB.partner, BestSkillUpDB.pushAuctionator = nil, nil, nil
@@ -762,8 +761,8 @@ SlashCmdList.BESTSKILLUP = function(msg)
   elseif cmd == "profit" or cmd == "skill" or cmd == "recipes" then
     if ns.UI then ns.UI.ShowView(cmd) else DB.view = cmd end
   elseif cmd == "max" then
-    DB.valueAtMax = DB.valueAtMax == false
-    ns.Print("At max skill: " .. (DB.valueAtMax and "rank all recipes by profit" or "keep ranking by cost per point")); ns.Refresh(0)
+    DB.skillupsAtMax = not DB.skillupsAtMax
+    ns.Print("Skill-ups tab at max skill " .. (DB.skillupsAtMax and "shown" or "hidden (Profit shows instead)")); ns.Refresh(0)
   elseif cmd == "wh" then
     DB.useWH = not DB.useWH; ns.Print("WH prices " .. (DB.useWH and "on" or "off")); ns.Refresh(0)
   elseif cmd == "price" then
