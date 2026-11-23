@@ -6,7 +6,7 @@ local ROWS, ROW_H, W = 16, 16, 340
 local TOP = 54                   -- title row + tab row
 local COLOURS = { orange = "|cffff8040", yellow = "|cffffff00", green = "|cff40c040", grey = "|cff808080" }
 local frame, rows, summary, optBtn, opts, unlearnedCB
-local tabs, filterBtns = {}, {}  -- "Skill-ups" / "Recipes" tabs, and the Recipes view's All / Owned / Missing
+local tabs, filterBtns = {}, {}  -- "Skill-ups" / "Profit" / "Recipes" tabs, and the Recipes view's All / Owned / Missing
 local overtimeText, chefText
 local list, offset, listFor = {}, 0, nil   -- the ranked list, the first row shown, and which profession it is for
 local scrollTrack, scrollThumb
@@ -17,7 +17,7 @@ local function skinFont(fs) skinFonts[#skinFonts + 1] = fs; if skin then skin.Fo
 local openedBySlash, dismissed, showOpts = false, false, false
 
 local function DB() return ns.DB end
-local function View() return DB().view == "recipes" and "recipes" or "skill" end
+local function View() local v = DB().view; return (v == "recipes" or v == "profit") and v or "skill" end
 local function Filter() local f = DB().recipeFilter; return (f == "owned" or f == "missing") and f or "all" end
 
 -- ---------------------------------------------------------------- list
@@ -71,7 +71,7 @@ local function showRecipeTooltip(row)
   costTip:SetPoint("TOPLEFT", itemTip, "BOTTOMLEFT", 0, -2)
   costTip:AddLine(COLOURS[x.colour] .. x.r[1] .. "|r")
   if x.value then
-    costTip:AddDoubleLine("Profit per craft (max skill)", profitText(x.profit), 1, 1, 1)
+    costTip:AddDoubleLine("Profit per craft", profitText(x.profit), 1, 1, 1)
   else
     costTip:AddDoubleLine(("%d%%  ·  %.2f crafts/pt"):format(x.p * 100, 1 / x.p), ns.Money(x.perPt) .. "/pt", 1, 1, 1)
   end
@@ -251,7 +251,7 @@ function renderRows()
     updateScrollbar()
     return
   end
-  local what = ns.ValueMode() and "recipes by profit (max skill)" or "options"
+  local what = View() == "profit" and "recipes by profit" or ns.ValueMode() and "recipes by profit (max skill)" or "options"
   if n > ROWS then
     summary:SetText(("%d-%d of %d %s"):format(offset + 1, math.min(offset + ROWS, n), n, what))
   else
@@ -284,6 +284,8 @@ local function fillList()
     list, owned, total, scanned = recipeList()
     for _, x in ipairs(list) do x.listView = true end
     listInfo = { owned = owned, total = total, scanned = scanned }
+  elseif View() == "profit" then
+    list = ns.EvaluateValue()
   else
     list = ns.Evaluate()
   end
@@ -550,14 +552,14 @@ local function build()
     b:SetScript("OnClick", onClick)
     return b
   end
-  for i, t in ipairs({ { "Skill-ups", "skill" }, { "Recipes", "recipes" } }) do
-    local b = smallButton(t[1], 70, 8 + (i - 1) * 74, function()
+  for i, t in ipairs({ { "Skill-ups", "skill" }, { "Profit", "profit" }, { "Recipes", "recipes" } }) do
+    local b = smallButton(t[1], 58, 8 + (i - 1) * 60, function()
       DB().view = t[2]; showOpts = false; hideTooltips(); UI.Update()
     end)
     b.view = t[2]; tabs[#tabs + 1] = b
   end
   for i, f in ipairs({ { "All", "all" }, { "Owned", "owned" }, { "Missing", "missing" } }) do
-    local b = smallButton(f[1], 52, W - 8 - 3 * 56 + (i - 1) * 56 + 4, function()
+    local b = smallButton(f[1], 46, W - 8 - 3 * 48 + (i - 1) * 48 + 4, function()
       DB().recipeFilter = f[2]; hideTooltips(); UI.Update()
     end)
     b.filter = f[2]; filterBtns[#filterBtns + 1] = b
@@ -600,6 +602,11 @@ if EllesmereUI and EllesmereUI.RegisterSkin then
 end
 
 function UI.Init() if not frame then build() end end
+function UI.ShowView(v)
+  UI.Init()
+  DB().view = v; showOpts = false; hideTooltips()
+  if frame:IsShown() then UI.Update() else openedBySlash = true; frame:Show() end
+end
 function UI.Toggle()
   UI.Init()
   if frame:IsShown() then frame:Hide(); openedBySlash = false else openedBySlash = true; frame:Show() end

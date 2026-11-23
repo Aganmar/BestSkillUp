@@ -25,7 +25,7 @@ Open your profession window and the ranked list appears beside it, with the best
 - **Tooltips** – hover a row for the item (with its Auctionator price) and the full cost breakdown; Shift-click for a Wowhead link you can copy.
 - **Arcane Salvager** – tick **Arcane Salvager** in Options when you'll disenchant near one: disenchant values then include its bonus (a 30% chance that dust or essence comes out at one more than the normal maximum, measured in game).
 - **Specializations** – once you've learned Armorsmith or Weaponsmith (and a master weaponsmith school), a Leatherworking school, or Gnomish or Goblin Engineering, plans for the rival specializations are no longer suggested. Before you specialise, everything is still shown, with a "Needs ..." note in the tooltip.
-- **Profit at max skill** – at the cap of your profession (150/150, 300/300 ...) nothing gives a point, so the list switches to every recipe you can craft, ranked by profit per craft (what you make, at your resale setting, minus the reagents). Turn it off with **Profit at max** in Options or `/bsu max`.
+- **Profit tab** – switch to **Profit** at the top of the window to see every recipe you can craft ranked by profit per craft (what you make, at your resale setting, minus the reagents), at any skill, for when you just want to make gold. At the cap of your profession (150/150, 300/300 ...) the Skill-ups tab shows this list too, since nothing gives a point; turn that off with **Profit at max** in Options or `/bsu max`.
 - **Recipes tab** – switch from **Skill-ups** to **Recipes** at the top of the window to see every recipe of the profession by the skill it's learned at, with its source. Show **All**, **Owned** or **Missing** (missing ones are marked `*`); Shift-click any recipe for its Wowhead link.
 - **EllesmereUI styling** when installed.
 
@@ -50,6 +50,7 @@ Auctionator is optional but recommended: without it, BestSkillUp falls back to v
 | `/bsu de [auto]` | Count disenchant value of what you make on/off (auto: on for characters with Enchanting) |
 | `/bsu overtime <0-5>` | Your Working Overtime rank (Legacy talent), for this character |
 | `/bsu chef <0-5>` | Your Master Chef rank (Legacy talent), for this character |
+| `/bsu profit` / `skill` / `recipes` | Switch tab |
 | `/bsu max` | At max skill, rank all recipes by profit on/off |
 | `/bsu wh` | Use Wowhead average prices when Auctionator has none |
 | `/bsu price <itemID> [copper]` | Set your own price for an item (blank clears it) |

@@ -759,6 +759,8 @@ SlashCmdList.BESTSKILLUP = function(msg)
     if n then CDB.overtime = math.max(0, math.min(5, math.floor(n))) end
     ns.Print(("Working Overtime %d/5 (%d%% fewer failed skill-ups on yellow/green)"):format(ns.OvertimeRank(), ns.OvertimeBonus() * 100 + 0.5))
     ns.Refresh(0)
+  elseif cmd == "profit" or cmd == "skill" or cmd == "recipes" then
+    if ns.UI then ns.UI.ShowView(cmd) else DB.view = cmd end
   elseif cmd == "max" then
     DB.valueAtMax = DB.valueAtMax == false
     ns.Print("At max skill: " .. (DB.valueAtMax and "rank all recipes by profit" or "keep ranking by cost per point")); ns.Refresh(0)
@@ -777,6 +779,6 @@ SlashCmdList.BESTSKILLUP = function(msg)
   elseif cmd == "reset" then
     DB.point = nil; if ns.UI then ns.UI.ResetPosition() end
   else
-    ns.Print("/bsu  prof  opt  resale none/vendor/ah  unlearned  source <type>  de [auto]  overtime <0-5>  chef <0-5>  max  " .. (ns.DevHelp or "") .. "wh  price <id> [c]  debug  reset")
+    ns.Print("/bsu  prof  opt  resale none/vendor/ah  unlearned  source <type>  de [auto]  overtime <0-5>  chef <0-5>  profit  max  " .. (ns.DevHelp or "") .. "wh  price <id> [c]  debug  reset")
   end
 end
