@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Column headers under the tabs: Item / Skill-up % / Cost per point, Item / Profit per craft, and Recipe / Learned at / Source.
 - **Profit tab:** every recipe you can craft, ranked by profit per craft, at any skill (`/bsu profit`). At max skill (150/150, 300/300 ...) the Skill-ups tab is hidden and Profit shows instead; tick **Skill-ups at max** in Options (or `/bsu max`) to keep it.
 
 ## 0.14.0

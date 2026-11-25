@@ -3,9 +3,10 @@ local UI = {}
 ns.UI = UI
 
 local ROWS, ROW_H, W = 16, 16, 340
-local TOP = 54                   -- title row + tab row
+local HEAD = 54                  -- title row + tab row; the column headers start here
+local TOP = HEAD + 14            -- ... and the list below them
 local COLOURS = { orange = "|cffff8040", yellow = "|cffffff00", green = "|cff40c040", grey = "|cff808080" }
-local frame, rows, summary, optBtn, opts, unlearnedCB
+local frame, rows, summary, optBtn, opts, unlearnedCB, colHead
 local tabs, filterBtns = {}, {}  -- "Skill-ups" / "Profit" / "Recipes" tabs, and the Recipes view's All / Owned / Missing
 local overtimeText, chefText
 local list, offset, listFor = {}, 0, nil   -- the ranked list, the first row shown, and which profession it is for
@@ -407,7 +408,7 @@ end
 
 local function buildOptions()
   opts = CreateFrame("Frame", nil, frame)
-  opts:SetPoint("TOPLEFT", 8, -TOP); opts:SetPoint("BOTTOMRIGHT", -8, 28)
+  opts:SetPoint("TOPLEFT", 8, -HEAD); opts:SetPoint("BOTTOMRIGHT", -8, 28)
   opts:Hide()
   local src, rg = DB().sources, DB().reagents
   local y = 0
@@ -495,6 +496,11 @@ function UI.Update()
     fb:SetShown(rv and not showOpts)
     if fb.filter == Filter() then fb:LockHighlight(); fb.text:SetTextColor(1, 0.82, 0) else fb:UnlockHighlight(); fb.text:SetTextColor(0.75, 0.75, 0.75) end
   end
+  local heads = { skill = { "Item", "Skill-up %", "Cost per point" }, profit = { "Item", "", "Profit per craft" },
+    recipes = { "Recipe", "Learned at", "Source" } }
+  local h = heads[View()]
+  colHead:SetShown(not showOpts)
+  colHead.left:SetText(h[1]); colHead.mid:SetText(h[2]); colHead.right:SetText(h[3])
   UI.SyncOptions()
   fillList()
   if showOpts then summary:SetText("") end
@@ -575,6 +581,22 @@ local function build()
     end)
     b.filter = f[2]; filterBtns[#filterBtns + 1] = b
   end
+
+  -- Column headers, lined up with the row columns; the labels follow the tab (UI.Update).
+  colHead = CreateFrame("Frame", nil, frame)
+  colHead:SetPoint("TOPLEFT", 8, -HEAD); colHead:SetSize(W - 24, 14)
+  local function headText(point, x, w, justify)
+    local fs = colHead:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    fs:SetPoint(point, x, 1); if w then fs:SetWidth(w) end; fs:SetJustifyH(justify)
+    skinFont(fs)
+    return fs
+  end
+  colHead.left = headText("LEFT", 2, 150, "LEFT")
+  colHead.mid = headText("RIGHT", -(W - 24 - 230), 70, "RIGHT")   -- right edge = the rows' middle column
+  colHead.right = headText("RIGHT", -2, 100, "RIGHT")
+  local line = colHead:CreateTexture(nil, "ARTWORK")
+  line:SetColorTexture(1, 0.82, 0, 0.25); line:SetHeight(1)
+  line:SetPoint("BOTTOMLEFT", 0, 0); line:SetPoint("BOTTOMRIGHT", 0, 0)
 
   rows = {}
   for i = 1, ROWS do rows[i] = makeRow(i) end
