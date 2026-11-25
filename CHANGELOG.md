@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
-- Column headers under the tabs: Item / Skill-up % / Cost per point, Item / Profit per craft, and Recipe / Learned at / Source.
+## 0.15.0
 - **Profit tab:** every recipe you can craft, ranked by profit per craft, at any skill (`/bsu profit`). At max skill (150/150, 300/300 ...) the Skill-ups tab is hidden and Profit shows instead; tick **Skill-ups at max** in Options (or `/bsu max`) to keep it.
+- Column headers under the tabs: Item / Skill-up % / Cost per point, Item / Profit per craft, and Recipe / Learned at / Source.
+- Recipe data re-checked against Wowhead: no recipes, colours, reagents or amounts changed. 44 recipes have updated sources, mostly newly listed as drops, so they now follow the Drop source filter (off by default for recipes you don't know).
+- Enchanting wands and oils that Wowhead lists with an amount of 0 now count as making 1, like the other professions.
 
 ## 0.14.0
 - New professions: **Alchemy**, **Tailoring** and **Engineering**. BestSkillUp now covers every crafting profession.
