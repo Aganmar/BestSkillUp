@@ -403,11 +403,16 @@ local function indexEnchanterMade()
   if P then for _, r in pairs(P.recipes) do if r[2] > 0 then enchanterMade[r[2]] = true end end end
 end
 
--- Arcane Salvager (Boosted Disenchanting), measured in WoW: Forever (BestSkillUp_Dev recordings, 2026-11-19):
--- when the bonus triggers a dust or essence drop comes out at the table's maximum + 1 (3 on a 1-2 row, 6 on a
--- 2-5 row; never doubled or x1.5). The chance is taken as 30% until there's more data (measured 34%, 95% range
--- 24-45%). Shards are left alone: no boosted shard has shown a bonus yet.
-ns.SALVAGER_CHANCE = 0.30
+-- Arcane Salvager (Boosted Disenchanting), measured in WoW: Forever (BestSkillUp_Dev recordings, 220 boosted
+-- disenchants to 2026-11-28): when the bonus triggers a dust or essence drop comes out at the table's maximum + 1
+-- (3 on a 1-2 row, 6 on a 2-5 row; never more, never doubled). How often depends on the row's range: 45% of
+-- 1-2 drops (59/132) but only 21% of 2-5 drops (13/62), so one flat chance doesn't fit (ruled out at 99%+).
+-- 4-6 rows (weapons ilvl 21-25) have no data yet: 30% sits between the two. Shards are left alone: no boosted
+-- shard has shown a bonus (15 so far).
+ns.SALVAGER_CHANCE_BY_RANGE = { [1] = 0.45, [2] = 0.30, [3] = 0.20 }   -- by max - min
+function ns.SalvagerChance(lo, hi)
+  return ns.SALVAGER_CHANCE_BY_RANGE[hi - lo] or (hi - lo >= 3 and 0.20 or 0.45)
+end
 local SHARDS = { [10978] = true, [11084] = true, [11138] = true, [11139] = true, [11177] = true, [11178] = true,
   [14343] = true, [14344] = true, [20725] = true }
 function ns.SalvagerOn() return DB and DB.salvagerBonus == true end
@@ -420,7 +425,8 @@ local function rowValue(rows, ilvl)
         local chance, lo, hi, mat = row[i][1], row[i][2], row[i][3], row[i][4]
         local qty = (lo + hi) / 2
         if DB.salvagerBonus and not SHARDS[mat] then
-          qty = (1 - ns.SALVAGER_CHANCE) * qty + ns.SALVAGER_CHANCE * (hi + 1)
+          local c = ns.SalvagerChance(lo, hi)
+          qty = (1 - c) * qty + c * (hi + 1)
         end
         v = v + chance / 100 * qty * matValue(mat)
       end

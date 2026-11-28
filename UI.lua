@@ -87,7 +87,7 @@ local function showRecipeTooltip(row)
   end
   if x.c.back > 0 then costTip:AddDoubleLine("Back", ns.Money(x.c.back) .. " |cff808080" .. x.c.rsrc .. "|r", 0.6, 0.6, 0.6) end
   if x.c.rsrc == "disenchant" and ns.SalvagerOn() then
-    costTip:AddLine(("Disenchant value with the Arcane Salvager (%d%% chance of max + 1 dust/essence)"):format(ns.SALVAGER_CHANCE * 100 + 0.5), 0.6, 0.6, 0.6)
+    costTip:AddLine("Disenchant value with the Arcane Salvager (max + 1 dust/essence: 45% on 1-2, 20% on 2-5)", 0.6, 0.6, 0.6)
   end
   if not x.value then costTip:AddDoubleLine("Net", ns.Money(x.c.net), 0.6, 0.6, 0.6) end
   if x.value and ns.DB.resale == "none" then costTip:AddLine("Valued at AH or vendor (resale is set to Ignore)", 0.6, 0.6, 0.6) end

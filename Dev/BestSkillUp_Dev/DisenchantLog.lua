@@ -279,6 +279,10 @@ end
 function ns.SalvagerReport()
   local function new() return { n = 0, got = 0, exp = 0, gotV = 0, expV = 0, up = 0, odd = 0, multi = 0, over = 0 } end
   local S = { [false] = new(), [true] = new() }
+  -- Boosted dust/essence drops by the row's range (max - min): how many came out at max + 1.
+  local SHARD = { [10978] = true, [11084] = true, [11138] = true, [11139] = true, [11177] = true, [11178] = true,
+    [14343] = true, [14344] = true, [20725] = true }
+  local W = {}
   local function price(id) return ns.AHPrice(id) or (ns.Data.items[id] and ns.Data.items[id][4]) or 0 end
   for _, e in ipairs(ns.DB.deLog or {}) do
     local row, rows, i
@@ -286,9 +290,9 @@ function ns.SalvagerReport()
     if row then
       local s = S[boosted(e)]
       s.n = s.n + 1
-      local inRow, hi, inNext = {}, {}, {}
+      local inRow, hi, lo, inNext = {}, {}, {}, {}
       for k = 3, #row do
-        local m = row[k]; inRow[m[4]] = true; hi[m[4]] = m[3]
+        local m = row[k]; inRow[m[4]] = true; hi[m[4]] = m[3]; lo[m[4]] = m[2]
         local q = m[1] / 100 * (m[2] + m[3]) / 2
         s.exp = s.exp + q; s.expV = s.expV + q * price(m[4])
       end
@@ -300,6 +304,12 @@ function ns.SalvagerReport()
         if inRow[id] then
           s.got = s.got + qty; kinds = kinds + 1
           if qty > hi[id] then over = true end
+          if boosted(e) and not SHARD[id] then
+            local w = hi[id] - lo[id]
+            W[w] = W[w] or { n = 0, k = 0, lo = lo[id], hi = hi[id] }
+            W[w].n = W[w].n + 1
+            if qty == hi[id] + 1 then W[w].k = W[w].k + 1 end
+          end
         elseif inNext[id] then up = true
         else odd = true end
       end
@@ -335,6 +345,17 @@ function ns.SalvagerReport()
         pct(s.multi, s.n), pct(s.over, s.n), pct(s.up, s.n), s.odd > 0 and (" · other " .. s.odd) or ""))
     end
   end
+  local parts = {}
+  for w = 1, 4 do
+    local x = W[w]
+    if x then
+      local bsu = ns.SalvagerChance and math.floor(ns.SalvagerChance(x.lo, x.hi) * 100 + 0.5)
+      local name = ({ "1-2/2-3", "4-6", "2-5", "wider" })[w]
+      parts[#parts + 1] = ("%s: %d/%d (%d%%%s)"):format(name, x.k, x.n, pct(x.k, x.n), bsu and (", BSU uses " .. bsu .. "%") or "")
+    end
+  end
+  if #parts > 0 then ns.Print("Boosted max + 1 by range: " .. table.concat(parts, " · ")) end
+  S.byRange = W
   for _, b in ipairs({ false, true }) do
     local u = U[b]
     if u.n > 0 then

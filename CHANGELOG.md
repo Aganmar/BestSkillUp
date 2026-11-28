@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- **Arcane Salvager:** the bonus now depends on the drop's normal range, as measured in game: a 45% chance of max + 1 for 1–2 drops (most essences, and 1–2 dust) and 20% for 2–5 dust, instead of a flat 30%. Essences and 1–2 dust are worth more near a Salvager than before, high-level 2–5 dust less.
+
 ## 0.15.0
 - **Profit tab:** every recipe you can craft, ranked by profit per craft, at any skill (`/bsu profit`). At max skill (150/150, 300/300 ...) the Skill-ups tab is hidden and Profit shows instead; tick **Skill-ups at max** in Options (or `/bsu max`) to keep it.
 - Column headers under the tabs: Item / Skill-up % / Cost per point, Item / Profit per craft, and Recipe / Learned at / Source.
